@@ -303,7 +303,7 @@
         if (e.target.files.length > 0) setFile(e.target.files[0]);
       };
 
-      // 2. HIGH-RESILIENCE UPLOAD ENGINE
+      // 2. HIGH-PERFORMANCE UPLOAD ENGINE (THROTTLED UI)
       const handleUpload = (e) => {
         e.preventDefault();
         if (!title || !file) return alert("Please provide a title and a video file.");
@@ -316,47 +316,53 @@
         const xhr = new XMLHttpRequest();
         xhr.open("POST", "https://anonmp4api.xyz/upload", true);
         
-        // --- CRITICAL NETWORK RESILIENCE SETTINGS ---
-        // Forces browser to never timeout the request, no matter how long 10GB takes
+        // Never timeout the request
         xhr.timeout = 0; 
         
         let startTime = new Date().getTime();
+        let lastUiUpdateTime = 0; // The throttle timer
 
         xhr.upload.onprogress = function(event) {
           if (event.lengthComputable) {
+            const currentTime = new Date().getTime();
             const percentComplete = (event.loaded / event.total) * 100;
             
-            let currentTime = new Date().getTime();
-            let timeElapsedSeconds = (currentTime - startTime) / 1000;
-            let loadedMB = event.loaded / (1024 * 1024);
-            let totalMB = event.total / (1024 * 1024);
-            
-            let speedMBps = timeElapsedSeconds > 0 ? (loadedMB / timeElapsedSeconds) : 0;
-            let remainingBytes = event.total - event.loaded;
-            let remainingTimeSeconds = speedMBps > 0 ? (remainingBytes / (1024 * 1024)) / speedMBps : 0;
+            // CRITICAL FIX: Only update the React UI once every 500 milliseconds OR at 100%
+            // This prevents the browser from freezing and dropping the network connection on massive files.
+            if (currentTime - lastUiUpdateTime > 500 || percentComplete === 100) {
+              lastUiUpdateTime = currentTime;
 
-            let timeString = "Calculating...";
-            if (percentComplete === 100) {
-              timeString = "Processing...";
-            } else if (remainingTimeSeconds > 0 && isFinite(remainingTimeSeconds)) {
-              let h = Math.floor(remainingTimeSeconds / 3600);
-              let m = Math.floor((remainingTimeSeconds % 3600) / 60);
-              let s = Math.floor(remainingTimeSeconds % 60);
+              let timeElapsedSeconds = (currentTime - startTime) / 1000;
+              let loadedMB = event.loaded / (1024 * 1024);
+              let totalMB = event.total / (1024 * 1024);
               
-              timeString = "";
-              if (h > 0) timeString += `${h}h `;
-              if (m > 0 || h > 0) timeString += `${m}m `;
-              timeString += `${s}s`;
-            }
+              let speedMBps = timeElapsedSeconds > 0 ? (loadedMB / timeElapsedSeconds) : 0;
+              let remainingBytes = event.total - event.loaded;
+              let remainingTimeSeconds = speedMBps > 0 ? (remainingBytes / (1024 * 1024)) / speedMBps : 0;
 
-            setProgress({
-              percent: percentComplete,
-              loadedMB: loadedMB.toFixed(1),
-              totalMB: totalMB.toFixed(1),
-              speed: speedMBps.toFixed(2),
-              timeLeft: timeString,
-              statusText: percentComplete === 100 ? "Processing & saving to Database..." : "Uploading please wait..."
-            });
+              let timeString = "Calculating...";
+              if (percentComplete === 100) {
+                timeString = "Processing...";
+              } else if (remainingTimeSeconds > 0 && isFinite(remainingTimeSeconds)) {
+                let h = Math.floor(remainingTimeSeconds / 3600);
+                let m = Math.floor((remainingTimeSeconds % 3600) / 60);
+                let s = Math.floor(remainingTimeSeconds % 60);
+                
+                timeString = "";
+                if (h > 0) timeString += `${h}h `;
+                if (m > 0 || h > 0) timeString += `${m}m `;
+                timeString += `${s}s`;
+              }
+
+              setProgress({
+                percent: percentComplete,
+                loadedMB: loadedMB.toFixed(1),
+                totalMB: totalMB.toFixed(1),
+                speed: speedMBps.toFixed(2),
+                timeLeft: timeString,
+                statusText: percentComplete === 100 ? "Processing & saving to Database..." : "Uploading please wait..."
+              });
+            }
           }
         };
 
@@ -393,9 +399,8 @@
           }
         };
 
-        // --- SPECIFIC ERROR CATCHING ---
         xhr.onerror = function() {
-          alert("CRITICAL NETWORK ERROR: Your connection dropped. For massive files (10GB+), a slight Wi-Fi flicker or your ISP timing out a long connection will kill the upload. Ensure you are on a stable Ethernet connection for massive files.");
+          alert("NETWORK ERROR: The connection dropped. Keep this browser tab active and in focus during the entire upload so Windows/Mac doesn't put the tab to sleep.");
           setUploadState('idle');
         };
 
@@ -409,7 +414,6 @@
           setUploadState('idle');
         };
 
-        // Fire the request
         xhr.send(formData);
       };
 
