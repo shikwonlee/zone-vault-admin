@@ -153,7 +153,6 @@
       border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 15px; position: relative;
     }
     
-    /* Delete Button inside Video Card */
     .btn-delete {
       position: absolute; top: 20px; right: 20px;
       background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);
@@ -178,7 +177,6 @@
     .success-state { text-align: center; padding: 20px 0; }
     .success-state i { font-size: 48px; color: var(--accent-approve); margin-bottom: 15px; }
     
-    /* Uniform Empty States for Auth */
     .empty-state { text-align: center; color: var(--text-muted); padding: 40px; margin-top: 20px; font-style: normal; }
     .empty-state i { font-size: 40px; margin-bottom: 15px; opacity: 0.5; color: var(--text-muted); }
     .empty-state p { font-size: 16px; margin-bottom: 5px; }
@@ -203,9 +201,9 @@
   <script crossorigin src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-    import { getDatabase, ref as dbRef, push, set, onValue, remove } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getDatabase, ref as dbRef, push, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAs2S6iRhnYhmqNuF0QCCYu5NuzxHxIRv0",
@@ -220,7 +218,6 @@
 
     const app = initializeApp(firebaseConfig);
     
-    // Assigning to window so React can access them easily
     window.db = getDatabase(app);
     window.auth = getAuth(app);
     
@@ -239,22 +236,18 @@
     const { useState, useEffect, useRef } = React;
 
     function VideoUploaderApp() {
-      // AUTHENTICATION STATES
       const [user, setUser] = useState(null);
       const [authLoading, setAuthLoading] = useState(true);
       const [isAdmin, setIsAdmin] = useState(false);
       const [usersError, setUsersError] = useState(null);
 
-      // UI STATES
       const [sidebarOpen, setSidebarOpen] = useState(false);
       const [isLibraryOpen, setIsLibraryOpen] = useState(false);
       const [uploadState, setUploadState] = useState('idle');
       
-      // FORM STATES
       const [title, setTitle] = useState('');
       const [file, setFile] = useState(null);
       
-      // PROGRESS STATES
       const [progress, setProgress] = useState({
         percent: 0,
         loadedMB: "0.0",
@@ -267,7 +260,6 @@
       const [videos, setVideos] = useState([]);
       const fileInputRef = useRef(null);
 
-      // 1. AUTHENTICATION CHECKER
       useEffect(() => {
         const unsubscribeAuth = window.fbOnAuthStateChanged(window.auth, (currentUser) => {
           setUser(currentUser);
@@ -279,7 +271,6 @@
                 setIsAdmin(true);
                 setUsersError(null);
                 
-                // Fetch videos for library ONLY IF ADMIN
                 const videosRef = window.fbDbRef(window.db, 'zonevault_videos');
                 window.fbOnValue(videosRef, (snapshot) => {
                   const data = snapshot.val();
@@ -312,7 +303,7 @@
         if (e.target.files.length > 0) setFile(e.target.files[0]);
       };
 
-      // 2.UPLOAD LOGIC
+      // 2. HIGH-RESILIENCE UPLOAD ENGINE
       const handleUpload = (e) => {
         e.preventDefault();
         if (!title || !file) return alert("Please provide a title and a video file.");
@@ -324,7 +315,11 @@
 
         const xhr = new XMLHttpRequest();
         xhr.open("POST", "https://anonmp4api.xyz/upload", true);
-
+        
+        // --- CRITICAL NETWORK RESILIENCE SETTINGS ---
+        // Forces browser to never timeout the request, no matter how long 10GB takes
+        xhr.timeout = 0; 
+        
         let startTime = new Date().getTime();
 
         xhr.upload.onprogress = function(event) {
@@ -366,14 +361,13 @@
         };
 
         xhr.onload = async function() {
-          if (xhr.status === 200) {
+          if (xhr.status >= 200 && xhr.status < 300) {
             try {
               const data = JSON.parse(xhr.responseText);
               if (!data.success) throw new Error(data.error?.message || "Upload failed.");
 
               setProgress(prev => ({...prev, statusText: 'Syncing to Database...'}));
 
-              // Save to Firebase Database
               const videoRef = window.fbDbRef(window.db, 'zonevault_videos');
               const newVideoRef = window.fbPush(videoRef); 
               
@@ -390,24 +384,35 @@
 
               setUploadState('success');
             } catch (error) {
-              alert("Error: " + error.message);
+              alert("Error Processing Response: " + error.message);
               setUploadState('idle');
             }
           } else {
-            alert("Server Error: " + xhr.status);
+            alert(`API Error ${xhr.status}: The server rejected the file. It may be temporarily unavailable.`);
             setUploadState('idle');
           }
         };
 
+        // --- SPECIFIC ERROR CATCHING ---
         xhr.onerror = function() {
-          alert("Network Error occurred.");
+          alert("CRITICAL NETWORK ERROR: Your connection dropped. For massive files (10GB+), a slight Wi-Fi flicker or your ISP timing out a long connection will kill the upload. Ensure you are on a stable Ethernet connection for massive files.");
           setUploadState('idle');
         };
 
+        xhr.onabort = function() {
+          alert("Upload was aborted by the browser.");
+          setUploadState('idle');
+        };
+
+        xhr.ontimeout = function() {
+          alert("Upload Timed Out: Your network took too long to send the file to the server.");
+          setUploadState('idle');
+        };
+
+        // Fire the request
         xhr.send(formData);
       };
 
-      // 3. DELETE VIDEO LOGIC
       const handleDelete = (videoId) => {
         if(confirm("Are you sure you want to remove this video from your library?")) {
           const videoRef = window.fbDbRef(window.db, `zonevault_videos/${videoId}`);
@@ -442,7 +447,6 @@
 
       return (
         <React.Fragment>
-          {/* === HEADER / TOP NAV === */}
           <nav className="top-nav">
             <div className="menu-trigger" onClick={() => setSidebarOpen(true)}>
               <i className="fas fa-bars-staggered"></i>
@@ -451,7 +455,6 @@
             <div style={{width: '36px'}}></div>
           </nav>
 
-          {/* === EXACT SIDEBAR AS PAGE ACCESS PANEL === */}
           <div className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}></div>
           <aside className={`sidebar ${sidebarOpen ? 'active' : ''}`}>
             <div style={{ marginBottom: '40px', paddingLeft: '15px' }}>
@@ -459,7 +462,7 @@
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>Management Suite</p>
             </div>
 
-            <a href="panel" className="nav-btn">
+            <a href="panel.html" className="nav-btn">
               <i className="fas fa-house"></i>
               <span>Admin Home</span>
             </a>
@@ -479,7 +482,7 @@
               <span>Notifications</span>
             </a>
 
-            <a href="generator" className="nav-btn">
+            <a href="admin-generator" className="nav-btn">
               <i className="fas fa-key"></i>
               <span>Access Codes</span>
             </a>
@@ -500,7 +503,6 @@
             </a>
           </aside>
 
-          {/* === MAIN CONTENT === */}
           <main className="main-content">
             <header>
               <p className="subtitle">
@@ -511,7 +513,6 @@
                 )}
               </p>
               
-              {/* Library Button (Admins Only) */}
               {user && !authLoading && !usersError && isAdmin && (
                 <button className="header-btn" onClick={() => setIsLibraryOpen(true)} title="View Uploaded Videos">
                   <i className="fas fa-video"></i>
@@ -519,7 +520,6 @@
               )}
             </header>
 
-            {/* EMPTY STATES FOR AUTHENTICATION */}
             {!user && !authLoading && (
               <div className="empty-state">
                 <i className="fas fa-lock"></i>
@@ -543,7 +543,6 @@
               </div>
             )}
 
-            {/* UPLOADER INTERFACE (Admins Only) */}
             {user && !authLoading && !usersError && isAdmin && (
               <div className="glass-card">
                 
@@ -556,7 +555,7 @@
                     </div>
 
                     <div className="form-group">
-                      <label>Media File</label>
+                      <label>Media File (Up to 20GB)</label>
                       <input type="file" className="custom-input" accept="video/*" 
                              ref={fileInputRef} onChange={handleFileChange} required />
                     </div>
@@ -613,7 +612,6 @@
             )}
           </main>
 
-          {/* === MODAL: VIDEO LIBRARY (WITH DELETE) === */}
           <div className={`modal-overlay ${isLibraryOpen ? 'active' : ''}`}>
              <div className="modal-card">
                 <div className="modal-header">
@@ -631,7 +629,6 @@
                   ) : (
                     videos.map(vid => (
                       <div key={vid.id} className="video-item">
-                        {/* DELETE BUTTON */}
                         <button className="btn-delete" onClick={() => handleDelete(vid.id)} title="Delete Video">
                           <i className="fas fa-trash"></i>
                         </button>
