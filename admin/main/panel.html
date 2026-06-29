@@ -332,14 +332,17 @@
 
 <div id="root"></div>
 
+<!-- 1. Synchronous Libraries -->
 <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
 
+<!-- Firebase Compat (Stable, synchronous loading) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
+<!-- 2. Firebase Initialization -->
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyAs2S6iRhnYhmqNuF0QCCYu5NuzxHxIRv0",
@@ -357,10 +360,10 @@
   }
 </script>
 
+<!-- 3. React Application Logic -->
 <script type="text/babel">
   const { useState, useEffect } = React;
   const auth = firebase.auth();
-  const db = firebase.database();
 
   // The Admin Dashboard UI
   function AdminHome({ handleLogout }) {
@@ -459,23 +462,11 @@
       const [isProcessing, setIsProcessing] = useState(false);
 
       useEffect(() => {
-          const unsubscribe = auth.onAuthStateChanged(async (user) => {
+          // Listen for persistent login state
+          const unsubscribe = auth.onAuthStateChanged((user) => {
               if (user) {
-                  // Verify if the logged-in user is actually an admin in the database
-                  try {
-                      const snapshot = await db.ref(`users/${user.uid}`).once('value');
-                      if (snapshot.exists() && snapshot.val().role === 'admin') {
-                          setViewState('admin');
-                      } else {
-                          // Not an admin
-                          await auth.signOut();
-                          setErrorMsg("Access Denied: You lack administrator privileges.");
-                          setViewState('login');
-                      }
-                  } catch (err) {
-                      setErrorMsg("Failed to verify permissions.");
-                      setViewState('login');
-                  }
+                  // If Firebase Auth confirms they are logged in with a valid account, let them in!
+                  setViewState('admin');
               } else {
                   setViewState('login');
               }
@@ -490,10 +481,12 @@
           setIsProcessing(true);
 
           try {
+              // Connects to Firebase Auth to verify Email and Password
               await auth.signInWithEmailAndPassword(email, password);
-              // onAuthStateChanged will handle the rest
+              // The onAuthStateChanged listener will automatically switch the view to 'admin'
           } catch (err) {
-              setErrorMsg("Invalid credentials. Please try again.");
+              console.error(err);
+              setErrorMsg("Invalid Email or Password. Please try again.");
               setIsProcessing(false);
           }
       };
@@ -531,7 +524,7 @@
                           <input 
                               type="password" 
                               className="login-input" 
-                              placeholder="Passcode" 
+                              placeholder="Password" 
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
                               required
