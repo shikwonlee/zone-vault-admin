@@ -210,7 +210,7 @@
       authDomain: "tvnstream-b4497.firebaseapp.com",
       databaseURL: "https://tvnstream-b4497-default-rtdb.firebaseio.com",
       projectId: "tvnstream-b4497",
-      storageBucket: "tvnstream-b4497.firebasestorage.app",
+      storageBucket: "tvnstream-b4497.appspot.com",
       messagingSenderId: "308384754214",
       appId: "1:308384754214:web:2938e76cd29b288f75d4e7",
       measurementId: "G-VFNH70R4D9"
@@ -260,6 +260,7 @@
       const [videos, setVideos] = useState([]);
       const fileInputRef = useRef(null);
 
+      // 1. AUTHENTICATION CHECKER
       useEffect(() => {
         const unsubscribeAuth = window.fbOnAuthStateChanged(window.auth, (currentUser) => {
           setUser(currentUser);
@@ -298,6 +299,26 @@
         });
         return () => unsubscribeAuth();
       }, []);
+
+      // --- SAFE EXIT WARNING HOOK ---
+      useEffect(() => {
+        const handleBeforeUnload = (e) => {
+          if (uploadState === 'uploading') {
+            e.preventDefault();
+            e.returnValue = ''; // Required for modern browsers to show the warning
+            return ''; // Required for older browsers
+          }
+        };
+
+        if (uploadState === 'uploading') {
+          window.addEventListener('beforeunload', handleBeforeUnload);
+        }
+
+        return () => {
+          window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+      }, [uploadState]);
+      // ---------------------------------
 
       const handleFileChange = (e) => {
         if (e.target.files.length > 0) setFile(e.target.files[0]);
