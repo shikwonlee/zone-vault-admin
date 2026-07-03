@@ -1,0 +1,1260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signal Desk — AngelThump Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c10;
+    --panel:#12161c;
+    --panel-2:#161b22;
+    --line:#232a35;
+    --text:#e7ecf2;
+    --muted:#7a8494;
+    --dim:#4b5361;
+    --signal:#35d48c;
+    --signal-dim:#1c5c42;
+    --warn:#f0b429;
+    --bad:#ff5470;
+    --bad-dim:#5c2130;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+  ::selection{background:var(--signal);color:#04150d;}
+  .wrap{max-width:1100px;margin:0 auto;padding:20px 18px 60px;}
+
+  /* ---------- header ---------- */
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:22px;}
+  .brand{display:flex;align-items:baseline;gap:10px;}
+  .brand .mark{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;letter-spacing:0.5px;}
+  .brand .mark span{color:var(--signal);}
+  .brand .sub{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase;}
+  .channelbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .channelbar input{background:var(--panel);border:1px solid var(--line);color:var(--text);
+    font-family:'IBM Plex Mono',monospace;font-size:14px;padding:9px 12px;border-radius:6px;width:150px;}
+  .channelbar input:focus{outline:none;border-color:var(--signal);}
+  .btn{background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-family:'Inter',sans-serif;
+    font-weight:600;font-size:13px;padding:9px 16px;border-radius:6px;cursor:pointer;transition:.15s;}
+  .btn:hover{border-color:var(--signal);color:var(--signal);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn.primary{background:var(--signal);border-color:var(--signal);color:#04150d;}
+  .btn.primary:hover{filter:brightness(1.08);color:#04150d;}
+  .btn.danger{background:var(--bad);border-color:var(--bad);color:#2b0510;}
+  .btn.danger:hover{filter:brightness(1.1);color:#2b0510;}
+
+  .statuspill{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;
+    letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+  .led{width:9px;height:9px;border-radius:50%;background:var(--dim);box-shadow:0 0 0 rgba(0,0,0,0);transition:.3s;}
+  .led.live{background:var(--signal);box-shadow:0 0 10px 2px var(--signal);}
+  .led.warn{background:var(--warn);box-shadow:0 0 10px 2px var(--warn);}
+  .led.bad{background:var(--bad);box-shadow:0 0 10px 2px var(--bad);}
+
+  /* ---------- grid ---------- */
+  .grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
+  @media (max-width:820px){.grid{grid-template-columns:1fr;}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;}
+  .panel h2{margin:0 0 14px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;
+    letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+
+  /* ---------- signal scope (signature element) ---------- */
+  .scope-readout{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px;}
+  .scope-pct{font-family:'IBM Plex Mono',monospace;font-size:44px;font-weight:600;line-height:1;color:var(--signal);}
+  .scope-pct.off{color:var(--dim);}
+  .scope-pct sup{font-size:16px;color:var(--muted);margin-left:2px;}
+  .scope-labels{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+  .scope-labels div{margin-bottom:3px;}
+  .scope-labels b{color:var(--text);font-weight:600;}
+
+  .bars{display:flex;align-items:flex-end;gap:3px;height:64px;background:var(--panel-2);
+    border-radius:6px;padding:8px 10px;border:1px solid var(--line);}
+  .bar{flex:1;background:linear-gradient(180deg,var(--signal),var(--signal-dim));border-radius:2px;
+    min-height:3px;transition:height .18s ease-out;}
+  .bar.off{background:var(--line);}
+
+  .sub-readouts{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  .chip{flex:1;min-width:110px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    padding:10px 12px;}
+  .chip .k{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+  .chip .v{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;}
+
+  /* ---------- stat cards ---------- */
+  .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .statcard{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;}
+  .statcard .k{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .statcard .v{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;}
+  .titlecard{grid-column:1/-1;}
+  .titlecard .v{font-family:'Inter',sans-serif;font-size:14px;font-weight:500;word-break:break-word;}
+
+  /* ---------- video ---------- */
+  video{width:100%;border-radius:8px;background:#000;display:block;aspect-ratio:16/9;}
+  .srcline{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:8px;
+    word-break:break-all;}
+
+  /* ---------- recorder ---------- */
+  .rec-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  .rec-dot{width:12px;height:12px;border-radius:50%;background:var(--dim);}
+  .rec-dot.on{background:var(--bad);box-shadow:0 0 10px 3px var(--bad);animation:blink 1s infinite;}
+  @keyframes blink{50%{opacity:.25;}}
+  .rec-timer{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;}
+  .rec-meta{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+  .toggle-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin:10px 0;}
+  details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;}
+  summary{cursor:pointer;font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+  details input{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 10px;border-radius:6px;margin-top:8px;}
+
+  /* ---------- console ---------- */
+  .console{grid-column:1/-1;background:#080a0d;border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;height:150px;overflow-y:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;
+    line-height:1.7;}
+  .console .row{color:var(--muted);}
+  .console .row .t{color:var(--dim);margin-right:8px;}
+  .console .row.ok{color:var(--signal);}
+  .console .row.warn{color:var(--warn);}
+  .console .row.err{color:var(--bad);}
+
+  .note{font-size:12px;color:var(--muted);line-height:1.6;margin:4px 0 0;}
+  a.dl{color:var(--signal);display:block;font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:6px;}
+  a.dl.secondary{color:var(--muted);font-size:11px;}
+
+  /* ---------- embed panel ---------- */
+  .embed-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  .embed-badge{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;
+    letter-spacing:1px;text-transform:uppercase;color:var(--muted);background:var(--panel-2);
+    border:1px solid var(--line);border-radius:6px;padding:6px 10px;}
+  .embed-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .btn.small{padding:7px 12px;font-size:12px;}
+  .btn.ghost-signal{background:transparent;border-color:var(--signal-dim);color:var(--signal);}
+  .btn.ghost-signal:hover{background:var(--signal);color:#04150d;}
+  .code-box{position:relative;background:#080a0d;border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;max-height:280px;overflow:auto;margin:0 0 12px;}
+  .code-box pre{margin:0;font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.65;
+    white-space:pre-wrap;word-break:break-all;color:#c9d3e0;}
+  .code-box .tag{color:var(--signal);} .code-box .str{color:#f0b429;} .code-box .cmt{color:var(--dim);}
+  .code-filename{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);
+    letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+
+  /* ---------- toast ---------- */
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(16px);
+    background:var(--panel-2);border:1px solid var(--signal);color:var(--text);padding:11px 20px;
+    border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;opacity:0;
+    transition:.25s;z-index:100;pointer-events:none;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="mark">SIGNAL<span>DESK</span></div>
+      <div class="sub">AngelThump Live Monitor</div>
+    </div>
+    <div class="channelbar">
+      <input id="channelInput" value="prdt" spellcheck="false" placeholder="channel">
+      <button class="btn primary" id="connectBtn">Connect</button>
+      <div class="statuspill"><span class="led" id="statusLed"></span><span id="statusText">Idle</span></div>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- SIGNAL SCOPE -->
+    <div class="panel">
+      <h2>Signal Scope</h2>
+      <div class="scope-readout">
+        <div class="scope-pct off" id="scopePct">—<sup>%</sup></div>
+        <div class="scope-labels">
+          <div>CHANNEL <b id="lblChannel">prdt</b></div>
+          <div>STATE <b id="lblState">OFFLINE</b></div>
+        </div>
+      </div>
+      <div class="bars" id="bars"></div>
+      <div class="sub-readouts">
+        <div class="chip"><div class="k">Bitrate</div><div class="v" id="chipBitrate">—</div></div>
+        <div class="chip"><div class="k">Resolution</div><div class="v" id="chipRes">—</div></div>
+        <div class="chip"><div class="k">FPS</div><div class="v" id="chipFps">—</div></div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="panel">
+      <h2>Stream Stats</h2>
+      <div class="statgrid">
+        <div class="statcard"><div class="k">Viewers</div><div class="v" id="statViewers">—</div></div>
+        <div class="statcard"><div class="k">Uptime</div><div class="v" id="statUptime">00:00:00</div></div>
+        <div class="statcard titlecard"><div class="k">Title</div><div class="v" id="statTitle">—</div></div>
+      </div>
+    </div>
+
+    <!-- VIDEO -->
+    <div class="panel">
+      <h2>Preview</h2>
+      <video id="video" muted controls playsinline></video>
+      <video id="videoCapture" muted playsinline
+        style="position:fixed;left:-9999px;top:-9999px;width:2px;height:2px;opacity:0;pointer-events:none;"></video>
+      <div class="srcline" id="srcLine">No source detected yet.</div>
+    </div>
+
+    <!-- RECORDER -->
+    <div class="panel">
+      <h2>Recorder</h2>
+      <div class="rec-row">
+        <span class="rec-dot" id="recDot"></span>
+        <span class="rec-timer" id="recTimer">00:00:00</span>
+        <button class="btn danger" id="recBtn" disabled>Start Recording</button>
+      </div>
+      <div class="rec-meta" id="recMeta">Format: — · Size: 0 MB</div>
+      <div class="toggle-row">
+        <input type="checkbox" id="autoStop" checked>
+        <label for="autoStop">Auto-stop &amp; save when the stream goes offline</label>
+      </div>
+      <div id="downloadHolder"></div>
+      <details>
+        <summary>Advanced: manual HLS (.m3u8) URL override</summary>
+        <input id="manualUrl" placeholder="https://.../index.m3u8">
+        <button class="btn" id="loadManualBtn" style="margin-top:8px;">Load this source</button>
+      </details>
+    </div>
+
+    <!-- EMBED CODE -->
+    <div class="panel" style="grid-column:1/-1;">
+      <h2>Embed Code</h2>
+      <div class="embed-head">
+        <div class="embed-badge"><span class="led" id="embedLed"></span><span id="embedBadgeText">prdt · not generated yet</span></div>
+        <div class="embed-actions">
+          <button class="btn small ghost-signal" id="copyEmbedBtn">Copy Embed Code</button>
+          <button class="btn small" id="downloadEmbedBtn">Download .html</button>
+        </div>
+      </div>
+      <div class="code-filename" id="embedFilename">embed.html</div>
+      <div class="code-box"><pre id="embedOut">Connect to a channel to generate the embed code.</pre></div>
+    </div>
+
+    <!-- CONSOLE -->
+    <div class="console" id="console"></div>
+
+  </div>
+
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+<script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const barsEl = $('bars');
+  const NUM_BARS = 28;
+  for(let i=0;i<NUM_BARS;i++){
+    const d = document.createElement('div');
+    d.className='bar off';
+    d.style.height='3px';
+    barsEl.appendChild(d);
+  }
+  const barEls = Array.from(barsEl.children);
+
+  const consoleEl = $('console');
+  function log(msg, kind){
+    const row = document.createElement('div');
+    row.className = 'row' + (kind ? ' '+kind : '');
+    const t = new Date().toLocaleTimeString();
+    row.innerHTML = '<span class="t">'+t+'</span>'+msg;
+    consoleEl.appendChild(row);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  const toastEl = $('toast');
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=>toastEl.classList.remove('show'), 2200);
+  }
+
+  const state = {
+    channel: 'prdt',
+    pollTimer: null,
+    hls: null,
+    videoSrcUrl: null,
+    live: false,
+    liveSince: null,
+    uptimeTimer: null,
+    recording: false,
+    mediaRecorder: null,
+    chunks: [],
+    recExt: 'webm',
+    recTimerHandle: null,
+    recStart: null,
+    scopeAnimHandle: null,
+    targetPct: 0,
+    sessionKey: null,
+    lastQuality: null,
+    fpsEma: null,
+    bitrateSamples: [],
+    masterVideo: null,
+    captureStreamSupported: null,
+    ffmpeg: null,
+    ffmpegLoading: null
+  };
+
+  const video = $('video');
+  const videoCapture = $('videoCapture');
+
+  // ---------- helpers to defensively read unknown API shapes ----------
+  function deepFind(obj, keyCandidates){
+    keyCandidates = keyCandidates.map(k=>k.toLowerCase());
+    let found;
+    (function walk(o){
+      if(found !== undefined || o===null || typeof o !== 'object') return;
+      for(const k in o){
+        if(found !== undefined) return;
+        if(keyCandidates.includes(k.toLowerCase())){
+          found = o[k];
+          return;
+        }
+      }
+      for(const k in o){
+        if(found !== undefined) return;
+        if(o[k] && typeof o[k] === 'object') walk(o[k]);
+      }
+    })(obj);
+    return found;
+  }
+
+  function findM3u8(obj){
+    let found;
+    (function walk(o){
+      if(found || o===null) return;
+      if(typeof o === 'string'){
+        if(/\.m3u8(\?.*)?$/i.test(o)) found = o;
+        return;
+      }
+      if(typeof o === 'object'){
+        for(const k in o){
+          if(found) return;
+          walk(o[k]);
+        }
+      }
+    })(obj);
+    return found;
+  }
+
+  // ---------- manifest derivation ----------
+  // AngelThump's stream endpoint doesn't hand back a manifest URL directly.
+  // We derive it the same way the broadcast studio embed does:
+  // base64(createdAt + username) + "_" + username, on a host matching the ingest region.
+  function regionHost(server){
+    const map = { nyc:'nyc3', sfo:'sfo3', ams:'ams3', tor:'tor1', blr:'blr1', syd:'syd1', fra:'fra1', lon:'lon1', sgp:'sgp1' };
+    const prefix = (server || '').split('-')[0];
+    return map[prefix] || (prefix + '1');
+  }
+  function deriveManifest(data){
+    const user = data && data.user, ingest = data && data.ingest;
+    if(!user || !ingest || data.type !== 'live') return null;
+    const segment = btoa(data.createdAt + user.username) + '_' + user.username;
+    const host = regionHost(ingest.server);
+    return { url: 'https://' + host + '.angelthump.com/hls/' + segment + '/index.m3u8', sessionKey: data.createdAt };
+  }
+  async function fetchStream(channel){
+    const endpoint = 'https://api.angelthump.com/v2/streams/' + encodeURIComponent(channel);
+    try{
+      const res = await fetch(endpoint, {cache:'no-store'});
+      if(res.status === 404) return {offline:true};
+      if(!res.ok) throw new Error('status ' + res.status);
+      return await res.json();
+    }catch(err){
+      // likely CORS-blocked in the browser — retry through a read-only proxy
+      try{
+        const res2 = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(endpoint), {cache:'no-store'});
+        if(res2.status === 404) return {offline:true};
+        if(!res2.ok) throw new Error('proxy status ' + res2.status);
+        return await res2.json();
+      }catch(err2){
+        throw err2;
+      }
+    }
+  }
+
+  function fmtDuration(sec){
+    sec = Math.max(0, Math.floor(sec));
+    const h = String(Math.floor(sec/3600)).padStart(2,'0');
+    const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
+    const s = String(sec%60).padStart(2,'0');
+    return h+':'+m+':'+s;
+  }
+
+  // ---------- signal scope animation ----------
+  function animateScope(){
+    barEls.forEach((el, i)=>{
+      let h;
+      if(!state.live){
+        h = 3;
+        el.classList.add('off');
+      } else {
+        el.classList.remove('off');
+        const base = state.targetPct * 0.6 * (0.5 + 0.5*Math.sin((i/NUM_BARS)*Math.PI));
+        const jitter = Math.random()*state.targetPct*0.35;
+        h = Math.min(60, Math.max(3, base + jitter));
+      }
+      el.style.height = h+'px';
+    });
+    state.scopeAnimHandle = requestAnimationFrame(animateScope);
+  }
+  animateScope();
+
+  function setScopePct(pct){
+    const el = $('scopePct');
+    if(pct === null || pct === undefined){
+      el.classList.add('off');
+      el.innerHTML = '—<sup>%</sup>';
+      state.targetPct = state.live ? 45 : 0; // indeterminate wobble when live but no reading yet
+      return;
+    }
+    el.classList.toggle('off', !state.live);
+    el.innerHTML = Math.round(pct)+'<sup>%</sup>';
+    state.targetPct = pct;
+  }
+
+  // ---------- real measured bitrate (hls.js fragment-load byte counters) ----------
+  // level.bitrate is just the nominal value advertised in the manifest. To show
+  // the *actual* achieved throughput we track real bytes-per-second from every
+  // fragment hls.js downloads, over a rolling ~8s window.
+  function trackFragBytes(data){
+    try{
+      const stats = data && data.frag && data.frag.stats;
+      const bytes = stats && (stats.total || stats.loaded);
+      const loading = stats && stats.loading;
+      if(!bytes || !loading || !loading.start || !loading.end) return;
+      const now = performance.now();
+      state.bitrateSamples.push({ t: now, bytes: bytes });
+      const cutoff = now - 8000;
+      state.bitrateSamples = state.bitrateSamples.filter(s => s.t >= cutoff);
+    }catch(e){}
+  }
+  function measuredBitrateKbps(){
+    const samples = state.bitrateSamples;
+    if(samples.length < 2) return null;
+    const totalBytes = samples.reduce((a, s) => a + s.bytes, 0);
+    const spanMs = samples[samples.length - 1].t - samples[0].t;
+    if(spanMs < 500) return null;
+    return Math.round((totalBytes * 8 / 1000) / (spanMs / 1000));
+  }
+
+  // ---------- real playback stats (AngelThump's API doesn't expose bitrate/res/fps,
+  // so we read them straight off the actual HLS stream via hls.js levels + fragment
+  // byte counters + the video element's own playback-quality counters). These are
+  // sampled off the always-on capture element (state.masterVideo), not the visible
+  // preview, so pausing the preview never blanks the readings. ----------
+  function sampleVideoQuality(){
+    const src = state.masterVideo || video;
+    if(!state.live || !state.videoSrcUrl || src.readyState < 2){
+      return;
+    }
+    let level = null;
+    if(state.hls && typeof state.hls.currentLevel === 'number' && state.hls.currentLevel >= 0 && state.hls.levels){
+      level = state.hls.levels[state.hls.currentLevel];
+    }
+
+    const w = (level && level.width) || src.videoWidth;
+    const h = (level && level.height) || src.videoHeight;
+    $('chipRes').textContent = (w && h) ? (w + 'x' + h) : '—';
+
+    const measured = measuredBitrateKbps();
+    if(measured){
+      $('chipBitrate').textContent = measured + ' kbps';
+    } else if(level && level.bitrate){
+      $('chipBitrate').textContent = Math.round(level.bitrate / 1000) + ' kbps (est)';
+    }
+
+    let fps = null, dropRatio = 0;
+    if(src.getVideoPlaybackQuality){
+      const q = src.getVideoPlaybackQuality();
+      const now = performance.now();
+      if(state.lastQuality){
+        const dt = (now - state.lastQuality.t) / 1000;
+        const dFrames = q.totalVideoFrames - state.lastQuality.frames;
+        const dDropped = q.droppedVideoFrames - state.lastQuality.dropped;
+        if(dt > 0.4 && dFrames >= 0){
+          fps = Math.round(dFrames / dt);
+          dropRatio = dFrames > 0 ? Math.min(1, Math.max(0, dDropped / dFrames)) : 0;
+        }
+        // dFrames < 0 means the underlying counters got reset (source swap) —
+        // skip this sample instead of showing a bogus negative-derived fps.
+      }
+      state.lastQuality = { t: now, frames: q.totalVideoFrames, dropped: q.droppedVideoFrames };
+    }
+    if(fps !== null && fps >= 0 && fps < 240){
+      state.fpsEma = state.fpsEma === null ? fps : Math.round(state.fpsEma * 0.6 + fps * 0.4);
+      $('chipFps').textContent = state.fpsEma;
+    }
+
+    // Buffer health → signal quality %. A healthy live buffer sits a few seconds
+    // ahead of playback; dropped frames pull the reading down.
+    let bufferAhead = 0;
+    try{
+      if(src.buffered && src.buffered.length){
+        bufferAhead = Math.max(0, src.buffered.end(src.buffered.length - 1) - src.currentTime);
+      }
+    }catch(e){}
+    // Recalibrated: a live HLS edge buffer of ~3-5s is already healthy in practice
+    // (the old /8s target under-read normal streams into the 60-70% band). Target
+    // buffer is now 5s for a "full" reading, plus a stability floor so a clean,
+    // drop-free stream doesn't get punished just for sitting close to the live edge.
+    const targetBuffer = 5;
+    let healthPct = Math.max(0, Math.min(100, (bufferAhead / targetBuffer) * 100));
+    if(dropRatio === 0 && bufferAhead > 1){
+      healthPct = Math.max(healthPct, 82);
+    }
+    const pct = Math.max(4, Math.min(100, healthPct * (1 - dropRatio)));
+    setScopePct(pct);
+  }
+  setInterval(sampleVideoQuality, 1000);
+
+  // ---------- status / led ----------
+  function setStatus(kind, text){
+    const led = $('statusLed');
+    led.className = 'led' + (kind ? ' '+kind : '');
+    $('statusText').textContent = text;
+  }
+
+  // ---------- uptime clock ----------
+  function startUptimeClock(){
+    if(state.uptimeTimer) clearInterval(state.uptimeTimer);
+    state.uptimeTimer = setInterval(()=>{
+      if(state.liveSince){
+        $('statUptime').textContent = fmtDuration((Date.now()-state.liveSince)/1000);
+      }
+    },1000);
+  }
+
+  // ---------- player setup ----------
+  // The HLS source is attached to a hidden "capture" element (videoCapture) that
+  // always keeps playing — that's what feeds the Signal Scope stats and the
+  // recorder. The visible preview video just mirrors that feed via
+  // captureStream(), so the user can pause/scrub the preview freely without
+  // ever interrupting the live readings or an in-progress recording. Browsers
+  // without captureStream() support fall back to the old behaviour (preview IS
+  // the source), with a note explaining that pausing it will pause recording too.
+  function wirePreviewMirror(masterEl){
+    const canSplit = !!(masterEl.captureStream || masterEl.mozCaptureStream);
+    state.captureStreamSupported = canSplit;
+    if(canSplit){
+      try{
+        const stream = masterEl.captureStream ? masterEl.captureStream() : masterEl.mozCaptureStream();
+        video.srcObject = stream;
+        video.muted = true;
+        video.play().catch(()=>{});
+        state.masterVideo = masterEl;
+        return;
+      }catch(err){
+        log('Preview mirroring failed (' + err.message + ') — falling back to direct playback.', 'warn');
+      }
+    }
+    // Fallback: preview element itself is the source.
+    state.masterVideo = video;
+  }
+
+  function loadSource(url, force){
+    if(state.videoSrcUrl === url && !force) return;
+    state.videoSrcUrl = url;
+    state.lastQuality = null;
+    state.fpsEma = null;
+    state.bitrateSamples = [];
+    $('srcLine').textContent = 'Source: ' + url;
+    log('Loading video source…');
+    try{
+      if(state.hls){ state.hls.destroy(); state.hls = null; }
+      const nativeHls = videoCapture.canPlayType('application/vnd.apple.mpegurl');
+      const useHlsJs = window.Hls && Hls.isSupported();
+      if(nativeHls && !useHlsJs){
+        videoCapture.src = url;
+        videoCapture.muted = true;
+        videoCapture.play().catch(()=>{});
+        log('Playing via native HLS support.', 'ok');
+        wirePreviewMirror(videoCapture);
+        $('recBtn').disabled = false;
+      } else if(useHlsJs){
+        const hls = new Hls();
+        hls.loadSource(url);
+        hls.attachMedia(videoCapture);
+        hls.on(Hls.Events.MANIFEST_PARSED, ()=>{
+          videoCapture.muted = true;
+          videoCapture.play().catch(()=>{});
+          log('Playing via hls.js.', 'ok');
+          wirePreviewMirror(videoCapture);
+          $('recBtn').disabled = false;
+        });
+        hls.on(Hls.Events.FRAG_LOADED, (e, data)=>{ trackFragBytes(data); });
+        hls.on(Hls.Events.ERROR, (e, data)=>{
+          if(data.fatal){
+            log('Playback error: ' + data.type, 'err');
+          }
+        });
+        state.hls = hls;
+      } else {
+        log('This browser cannot play HLS and hls.js failed to load.', 'err');
+      }
+    }catch(err){
+      log('Could not attach video source: ' + err.message, 'err');
+    }
+  }
+
+  // ---------- API polling ----------
+  async function pollOnce(){
+    const channel = state.channel;
+    let data;
+    try{
+      data = await fetchStream(channel);
+    }catch(err){
+      setStatus('warn', 'Connection issue');
+      log('Could not reach api.angelthump.com (even via proxy fallback): ' + err.message, 'err');
+      return;
+    }
+
+    if(!data || data.offline){
+      handleOffline();
+      return;
+    }
+
+    // Primary signal: can we derive a playback manifest? (requires data.type === 'live', user + ingest present)
+    const manifest = deriveManifest(data);
+
+    // Fallback heuristic for API shapes that don't match the user/ingest/type structure
+    const liveVal = deepFind(data, ['live','isLive','is_live','online','status']);
+    const explicitlyOffline = liveVal === false || liveVal === 'offline' || data.type === 'offline';
+    const looksLive = !!manifest || liveVal === true || liveVal === 'live' || liveVal === 'online';
+
+    if(explicitlyOffline || !looksLive){
+      handleOffline();
+      return;
+    }
+
+    handleLive(data, manifest);
+  }
+
+  function handleOffline(){
+    if(state.live){
+      log('Stream went offline.', 'warn');
+      if(state.recording){
+        log('Auto-stopping recording because stream ended.', 'warn');
+        stopRecording(true);
+      }
+    }
+    state.live = false;
+    state.liveSince = null;
+    state.sessionKey = null;
+    state.lastQuality = null;
+    setStatus('bad','Offline');
+    $('lblState').textContent = 'OFFLINE';
+    if(state.channel){
+      $('embedLed').className = 'led bad';
+      $('embedBadgeText').textContent = state.channel + ' · offline (embed code still works, will reconnect)';
+    }
+    $statViewersReset();
+    setScopePct(null);
+    $('chipBitrate').textContent = '—';
+    $('chipRes').textContent = '—';
+    $('chipFps').textContent = '—';
+    $('statTitle').textContent = '—';
+    $('recBtn').disabled = true;
+    if(!state.recording){
+      if(state.hls){ state.hls.destroy(); state.hls = null; }
+      state.bitrateSamples = [];
+      state.fpsEma = null;
+    }
+  }
+
+  function $statViewersReset(){ $('statViewers').textContent = '—'; }
+
+  // Parses AngelThump's createdAt into a real epoch-ms timestamp so Uptime
+  // reflects how long the broadcaster has actually been live — not how long
+  // ago this dashboard happened to detect it.
+  function parseCreatedAt(value){
+    if(value === undefined || value === null || value === '') return null;
+    const asNum = Number(value);
+    if(!isNaN(asNum)){
+      return asNum > 1e12 ? asNum : asNum * 1000; // seconds vs ms epoch
+    }
+    const parsed = Date.parse(value);
+    return isNaN(parsed) ? null : parsed;
+  }
+
+  function handleLive(data, manifest){
+    const startedAt = parseCreatedAt(data.createdAt);
+    if(!state.live){
+      log('Stream is live!', 'ok');
+      state.liveSince = startedAt || Date.now();
+      if(!startedAt){
+        log('Could not parse the real stream start time from the API — uptime falls back to local detection time.', 'warn');
+      }
+      startUptimeClock();
+    }
+    state.live = true;
+    setStatus('live','Live');
+    $('lblState').textContent = 'LIVE';
+    $('embedLed').className = 'led live';
+    $('embedBadgeText').textContent = state.channel + ' · LIVE — embed ready';
+
+    const viewers = deepFind(data, ['viewer_count','viewers','viewerCount','viewer']);
+    $('statViewers').textContent = (viewers ?? '—');
+
+    const title = deepFind(data, ['title','stream_title','streamTitle']);
+    $('statTitle').textContent = title || '—';
+
+    // Bitrate / resolution / fps are read live off the actual HLS stream by
+    // sampleVideoQuality() — AngelThump's API doesn't expose these fields.
+
+    // Prefer the derived manifest (AngelThump doesn't return a raw .m3u8 field).
+    // Falls back to scanning the response in case the API shape ever changes.
+    if(manifest){
+      if(manifest.sessionKey !== state.sessionKey){
+        // New session (fresh connect or a reconnect after a drop) — swap the player over.
+        const isReconnect = state.sessionKey !== null;
+        state.sessionKey = manifest.sessionKey;
+        loadSource(manifest.url, true);
+        buildEmbed(state.channel);
+        if(isReconnect){
+          // Fresh broadcast session — restart the uptime clock from its real start time.
+          state.liveSince = startedAt || Date.now();
+          startUptimeClock();
+          log('Reconnect detected (new session) — player & embed swapped to new manifest, uptime reset.', 'ok');
+        }
+      }
+    } else {
+      const m3u8 = findM3u8(data);
+      if(m3u8){
+        const full = m3u8.startsWith('http') ? m3u8 : ('https:' + (m3u8.startsWith('//')?'':'//') + m3u8);
+        loadSource(full);
+      } else if(!state.videoSrcUrl){
+        log('No playback manifest could be derived or found in the API response — paste one manually below (Advanced) to enable preview & recording.', 'warn');
+      }
+    }
+  }
+
+  function startPolling(){
+    if(state.pollTimer) clearInterval(state.pollTimer);
+    pollOnce();
+    state.pollTimer = setInterval(pollOnce, 5000);
+  }
+
+  // ---------- recording ----------
+  function pickMimeType(){
+    const candidates = [
+      'video/mp4;codecs=avc1,mp4a',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm'
+    ];
+    for(const c of candidates){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)){
+        return c;
+      }
+    }
+    return null;
+  }
+
+  function startRecording(){
+    const source = state.masterVideo || video;
+    let stream;
+    try{
+      stream = source.captureStream ? source.captureStream() : (source.mozCaptureStream ? source.mozCaptureStream() : null);
+      if(!stream) throw new Error('captureStream not supported in this browser');
+    }catch(err){
+      log('Could not capture video stream: ' + err.message, 'err');
+      return;
+    }
+    if(source === video){
+      log('Recording from the preview element directly — pausing the preview will pause this recording (browser limitation).', 'warn');
+    } else {
+      log('Recording from the independent capture feed — the preview can be paused freely.', 'ok');
+    }
+    const mime = pickMimeType();
+    if(!mime){
+      log('No supported recording format found in this browser.', 'err');
+      return;
+    }
+    state.recExt = mime.includes('mp4') ? 'mp4' : 'webm';
+    log('Recording started (' + state.recExt.toUpperCase() + ').', 'ok');
+
+    state.chunks = [];
+    let recorder;
+    try{
+      recorder = new MediaRecorder(stream, {mimeType: mime});
+    }catch(err){
+      log('MediaRecorder failed to start: ' + err.message, 'err');
+      return;
+    }
+    recorder.ondataavailable = e => {
+      if(e.data && e.data.size > 0){
+        state.chunks.push(e.data);
+        updateRecMeta();
+      }
+    };
+    recorder.onerror = e => log('Recorder error: ' + (e.error ? e.error.message : 'unknown'), 'err');
+    recorder.onstop = finalizeRecording;
+    recorder.start(2000);
+
+    state.mediaRecorder = recorder;
+    state.recording = true;
+    state.recStart = Date.now();
+    $('recDot').classList.add('on');
+    $('recBtn').textContent = 'Stop Recording';
+    $('recBtn').classList.remove('danger');
+    $('downloadHolder').innerHTML = '';
+    if(state.recTimerHandle) clearInterval(state.recTimerHandle);
+    state.recTimerHandle = setInterval(()=>{
+      $('recTimer').textContent = fmtDuration((Date.now()-state.recStart)/1000);
+    }, 1000);
+  }
+
+  function updateRecMeta(){
+    const bytes = state.chunks.reduce((a,c)=>a+c.size,0);
+    const mb = (bytes/1024/1024).toFixed(1);
+    $('recMeta').textContent = 'Format: ' + state.recExt.toUpperCase() + ' · Size: ' + mb + ' MB';
+  }
+
+  function stopRecording(auto){
+    if(!state.recording || !state.mediaRecorder) return;
+    state.mediaRecorder.stop();
+    state.recording = false;
+    $('recDot').classList.remove('on');
+    $('recBtn').textContent = 'Start Recording';
+    if(state.recTimerHandle){ clearInterval(state.recTimerHandle); state.recTimerHandle = null; }
+    log(auto ? 'Recording auto-stopped & saved.' : 'Recording stopped.', 'ok');
+  }
+
+  function offerDownload(blob, filename, autoTrigger, secondary){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.className = 'dl' + (secondary ? ' secondary' : '');
+    a.textContent = (secondary ? 'Also available: ' : 'Download ') + filename;
+    $('downloadHolder').appendChild(a);
+    if(autoTrigger && $('autoStop').checked){
+      a.click();
+      log('Auto-download triggered (' + filename + ').', 'ok');
+    }
+    return a;
+  }
+
+  function withTimeout(promise, ms, label){
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(label + ' timed out')), ms))
+    ]);
+  }
+
+  // ---------- client-side MP4 conversion (ffmpeg.wasm — no server, no upload) ----------
+  // Loads core.js/wasm as blob: URLs first (toBlobURL) instead of letting the
+  // worker importScripts() them cross-origin directly — the old pattern would
+  // silently hang on some browsers/CSPs instead of erroring out.
+  async function getFFmpeg(){
+    if(state.ffmpeg) return state.ffmpeg;
+    if(state.ffmpegLoading) return state.ffmpegLoading;
+    state.ffmpegLoading = (async () => {
+      if(!window.FFmpegWASM || !window.FFmpegWASM.FFmpeg){
+        throw new Error('ffmpeg.wasm did not load (check network access to unpkg.com)');
+      }
+      if(!window.FFmpegUtil || !window.FFmpegUtil.toBlobURL){
+        throw new Error('ffmpeg util script did not load (check network access to unpkg.com)');
+      }
+      const { FFmpeg } = window.FFmpegWASM;
+      const { toBlobURL } = window.FFmpegUtil;
+      const ff = new FFmpeg();
+      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+      await withTimeout((async () => {
+        await ff.load({
+          coreURL: await toBlobURL(baseURL + '/ffmpeg-core.js', 'text/javascript'),
+          wasmURL: await toBlobURL(baseURL + '/ffmpeg-core.wasm', 'application/wasm')
+        });
+      })(), 30000, 'Loading MP4 converter');
+      state.ffmpeg = ff;
+      return ff;
+    })();
+    return state.ffmpegLoading;
+  }
+
+  async function transcodeToMp4(blob, onProgress){
+    const { fetchFile } = window.FFmpegUtil;
+    const ffmpeg = await getFFmpeg();
+    let progressHandler;
+    if(onProgress){
+      progressHandler = ({ progress }) => {
+        if(typeof progress === 'number' && progress >= 0 && progress <= 1) onProgress(Math.round(progress * 100));
+      };
+      ffmpeg.on('progress', progressHandler);
+    }
+    const inName = 'in_' + Date.now() + '.webm';
+    const outName = 'out_' + Date.now() + '.mp4';
+    try{
+      await ffmpeg.writeFile(inName, await fetchFile(blob));
+      await withTimeout(ffmpeg.exec(['-i', inName, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
+        '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', outName]),
+        180000, 'MP4 conversion');
+      const data = await ffmpeg.readFile(outName);
+      return new Blob([data.buffer], {type:'video/mp4'});
+    } finally {
+      if(progressHandler) ffmpeg.off('progress', progressHandler);
+      try{ await ffmpeg.deleteFile(inName); await ffmpeg.deleteFile(outName); }catch(e){}
+    }
+  }
+
+  function finalizeRecording(){
+    const blob = new Blob(state.chunks, {type: state.recExt==='mp4' ? 'video/mp4' : 'video/webm'});
+    const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+    const baseName = state.channel + '_' + stamp;
+    $('downloadHolder').innerHTML = '';
+    updateRecMeta();
+
+    if(state.recExt === 'mp4'){
+      // Browser recorded MP4 natively — nothing to convert.
+      offerDownload(blob, baseName + '.mp4', true);
+      return;
+    }
+
+    // Most Chromium browsers can only MediaRecorder to WEBM, and WEBM often won't
+    // play on other devices — so we do NOT auto-download it. It's kept as a
+    // manual "backup" link only, in case the MP4 conversion below fails. The
+    // file that actually gets auto-saved is the converted MP4.
+    const backupLink = offerDownload(blob, baseName + '.webm', false, true);
+    backupLink.textContent = 'Backup (WEBM, manual — may not play everywhere): ' + baseName + '.webm';
+    $('recMeta').textContent = 'Format: WEBM (recorded) · Converting to MP4 locally… 0%';
+    log('Recorded as WEBM (this browser can\'t MediaRecorder straight to MP4). Converting to MP4 in-browser before saving — no upload involved…', 'warn');
+    toast('Converting to MP4…');
+
+    transcodeToMp4(blob, (pct)=>{
+      $('recMeta').textContent = 'Format: WEBM → MP4 · Converting… ' + pct + '%';
+    }).then(mp4Blob=>{
+      offerDownload(mp4Blob, baseName + '.mp4', true);
+      const mb = (mp4Blob.size/1024/1024).toFixed(1);
+      $('recMeta').textContent = 'Format: MP4 (converted) · Size: ' + mb + ' MB';
+      log('MP4 conversion done and downloaded — plays on any device now.', 'ok');
+      toast('MP4 ready: ' + baseName + '.mp4');
+    }).catch(err=>{
+      $('recMeta').textContent = 'Format: WEBM (MP4 conversion failed) · Size: ' + (blob.size/1024/1024).toFixed(1) + ' MB';
+      log('MP4 conversion failed (' + err.message + ') — auto-downloading the WEBM backup instead. Convert it with any video tool if needed.', 'err');
+      backupLink.click();
+      toast('MP4 conversion failed — WEBM backup downloaded instead');
+    });
+  }
+
+  // ---------- embed code generator ----------
+  // Self-contained snippet powered by ArtPlayer (a real, actively-maintained
+  // player library) + hls.js for the actual HLS decoding. The control bar is
+  // stripped down to ONLY volume and fullscreen (everything else ArtPlayer
+  // ships with — settings, PiP, screenshot, hotkeys, playback-rate, etc. — is
+  // disabled). Own polling loop, own reconnect detection (compares
+  // createdAt/sessionKey), a LIVE/OFFLINE badge, HLS fatal-error auto-recovery,
+  // and on phones, fullscreen automatically forces landscape orientation.
+  function buildEmbed(channel){
+    const id = channel.replace(/[^a-z0-9_-]/gi,'') || 'channel';
+    const safeChannel = channel.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const snippet = `<!-- AngelThump embed for ${channel} — ArtPlayer, volume+fullscreen only, auto-reconnect, mobile auto-landscape -->
+<div id="at-wrap-${id}" class="at-wrap-${id}" style="position:relative;aspect-ratio:16/9;background:#0a0c10;border-radius:10px;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,sans-serif;">
+  <span id="at-badge-${id}" class="at-badge">OFFLINE</span>
+  <span id="at-msg-${id}" class="at-msg">${safeChannel} is offline.</span>
+  <div id="at-art-${id}" class="at-art" style="width:100%;height:100%;display:none;"></div>
+</div>
+<style>
+  #at-wrap-${id} .at-badge{position:absolute;top:10px;left:10px;z-index:5;font-size:11px;font-weight:700;letter-spacing:.06em;padding:4px 9px;border-radius:4px;background:rgba(10,13,18,.85);border:1px solid #ff5470;color:#ff5470;transition:.2s;}
+  #at-wrap-${id} .at-badge.live{border-color:#35d48c;color:#35d48c;}
+  #at-wrap-${id} .at-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7a8494;font-size:13px;text-align:center;padding:20px;background:#0a0c10;z-index:1;}
+  #at-wrap-${id} .at-art{background:#000;}
+  /* Mobile-fullscreen forced-landscape fallback (for browsers without Screen
+     Orientation lock support, e.g. iOS Safari in web-fullscreen mode) */
+  #at-wrap-${id}.at-force-landscape{
+    position:fixed !important;top:50% !important;left:50% !important;
+    width:100vh !important;height:100vw !important;
+    transform:translate(-50%,-50%) rotate(90deg) !important;
+    z-index:2147483647 !important;border-radius:0 !important;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"><\/script>
+<script>
+(function(){
+  var CHANNEL = "${channel}";
+  var wrap = document.getElementById("at-wrap-${id}");
+  var artEl = document.getElementById("at-art-${id}");
+  var badge = document.getElementById("at-badge-${id}");
+  var msg = document.getElementById("at-msg-${id}");
+  var art = null, sessionKey = null, retryCount = 0, isLive = false;
+  var pollMs = 10000, countdown = 0, countdownTimer = null;
+
+  function regionHost(server){
+    var map = { nyc:"nyc3", sfo:"sfo3", ams:"ams3", tor:"tor1", blr:"blr1", syd:"syd1", fra:"fra1", lon:"lon1", sgp:"sgp1" };
+    var prefix = (server || "").split("-")[0];
+    return map[prefix] || (prefix + "1");
+  }
+
+  function deriveManifest(data){
+    var user = data.user, ingest = data.ingest;
+    if(!user || !ingest || data.type !== "live") return null;
+    var segment = btoa(data.createdAt + user.username) + "_" + user.username;
+    var host = regionHost(ingest.server);
+    return { url: "https://" + host + ".angelthump.com/hls/" + segment + "/index.m3u8", sessionKey: data.createdAt };
+  }
+
+  function fetchStream(){
+    var endpoint = "https://api.angelthump.com/v2/streams/" + CHANNEL;
+    return fetch(endpoint, { cache: "no-store" })
+      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .catch(function(){
+        return fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(endpoint), { cache: "no-store" })
+          .then(function(r){ if(!r.ok) throw 0; return r.json(); });
+      });
+  }
+
+  function startCountdown(){
+    clearInterval(countdownTimer);
+    countdown = Math.round(pollMs / 1000);
+    updateOfflineMsg();
+    countdownTimer = setInterval(function(){
+      countdown--;
+      if(countdown <= 0) countdown = Math.round(pollMs / 1000);
+      updateOfflineMsg();
+    }, 1000);
+  }
+  function updateOfflineMsg(){
+    if(!isLive) msg.textContent = CHANNEL + " is offline — checking again in " + countdown + "s";
+  }
+
+  // Trim the control bar down to ONLY volume + fullscreen. Built-in control
+  // DOM class names aren't officially documented, so instead of guessing exact
+  // selectors (which can silently hide everything if the guess is wrong), this
+  // inspects each control's className/data-name/title/aria-label for the words
+  // "volume" or "fullscreen". If it can't positively identify BOTH on a given
+  // pass, it leaves the default control bar untouched rather than risk hiding
+  // everything — a full control bar is a safer failure mode than a blank one.
+  function trimControlsToVolumeAndFullscreen(){
+    try{
+      var root = art && art.template && art.template.$controls;
+      if(!root) return;
+      var kids = Array.prototype.slice.call(root.children);
+      function looksLike(el, word){
+        var re = new RegExp(word, "i");
+        var cls = el.className || "";
+        var dataName = (el.getAttribute && el.getAttribute("data-name")) || "";
+        var title = (el.getAttribute && (el.getAttribute("title") || el.getAttribute("aria-label"))) || "";
+        return re.test(cls) || re.test(dataName) || re.test(title);
+      }
+      var volumeEls = kids.filter(function(k){ return looksLike(k, "volume"); });
+      var fsEls = kids.filter(function(k){ return looksLike(k, "fullscreen"); });
+      if(!volumeEls.length || !fsEls.length) return;
+      var keep = volumeEls.concat(fsEls);
+      kids.forEach(function(k){
+        k.style.display = keep.indexOf(k) === -1 ? "none" : "";
+      });
+    }catch(e){}
+  }
+
+  function ensurePlayer(){
+    if(art) return art;
+    art = new Artplayer({
+      container: artEl,
+      url: "",
+      volume: 0.5,
+      muted: true,
+      autoplay: true,
+      isLive: true,
+      playsInline: true,
+      autoSize: false,
+      autoMini: false,
+      setting: false,
+      loop: false,
+      flip: false,
+      playbackRate: false,
+      aspectRatio: false,
+      screenshot: false,
+      hotkey: false,
+      pip: false,
+      airplay: false,
+      mutex: true,
+      fullscreen: true,
+      fullscreenWeb: true,
+      miniProgressBar: false,
+      theme: "#35d48c",
+      customType: {
+        m3u8: function(video, url){
+          if(video.hls){ video.hls.destroy(); }
+          var hls = new Hls();
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          video.hls = hls;
+          hls.on(Hls.Events.ERROR, function(evt, data){
+            if(!data.fatal) return;
+            retryCount++;
+            if(retryCount > 6){ setLive(false); return; }
+            if(data.type === Hls.ErrorTypes.NETWORK_ERROR){ hls.startLoad(); }
+            else if(data.type === Hls.ErrorTypes.MEDIA_ERROR){ hls.recoverMediaError(); }
+          });
+        }
+      }
+    });
+    art.on("ready", function(){ trimControlsToVolumeAndFullscreen(); });
+    art.on("resize", function(){ trimControlsToVolumeAndFullscreen(); });
+    art.on("fullscreen", function(state){ handleFullscreenChange(state); trimControlsToVolumeAndFullscreen(); });
+    art.on("fullscreenWeb", function(state){ handleFullscreenChange(state); trimControlsToVolumeAndFullscreen(); });
+    return art;
+  }
+
+  // ---------- mobile auto-landscape on fullscreen ----------
+  function isMobile(){
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "") || (window.innerWidth <= 900 && "ontouchstart" in window);
+  }
+  function isPortrait(){
+    return window.matchMedia && window.matchMedia("(orientation: portrait)").matches;
+  }
+  function handleFullscreenChange(state){
+    if(state && isMobile()){
+      if(screen.orientation && screen.orientation.lock){
+        screen.orientation.lock("landscape").catch(function(){ applyCssRotateFallback(true); });
+      } else {
+        applyCssRotateFallback(true);
+      }
+    } else {
+      if(screen.orientation && screen.orientation.unlock){
+        try{ screen.orientation.unlock(); }catch(e){}
+      }
+      applyCssRotateFallback(false);
+    }
+  }
+  function applyCssRotateFallback(on){
+    if(on && isPortrait()){
+      wrap.classList.add("at-force-landscape");
+    } else {
+      wrap.classList.remove("at-force-landscape");
+    }
+  }
+  window.addEventListener("orientationchange", function(){
+    if(wrap.classList.contains("at-force-landscape") && !isPortrait()){
+      wrap.classList.remove("at-force-landscape");
+    }
+  });
+
+  function setLive(live){
+    isLive = live;
+    badge.textContent = live ? "LIVE" : "OFFLINE";
+    badge.className = "at-badge" + (live ? " live" : "");
+    artEl.style.display = live ? "block" : "none";
+    msg.style.display = live ? "none" : "flex";
+    if(live){
+      clearInterval(countdownTimer);
+    } else {
+      startCountdown();
+    }
+  }
+
+  function attach(url){
+    var player = ensurePlayer();
+    retryCount = 0;
+    player.switchUrl(url).catch(function(){});
+  }
+
+  function poll(){
+    fetchStream().then(function(data){
+      var manifest = deriveManifest(data);
+      if(manifest){
+        setLive(true);
+        if(manifest.sessionKey !== sessionKey){
+          sessionKey = manifest.sessionKey;
+          attach(manifest.url);
+        }
+      } else {
+        sessionKey = null;
+        setLive(false);
+      }
+    }).catch(function(){});
+  }
+
+  setLive(false);
+  poll();
+  setInterval(poll, pollMs);
+})();
+<\/script>`;
+    $('embedOut').textContent = snippet;
+    $('embedFilename').textContent = 'embed-' + id + '.html';
+    $('embedBadgeText').textContent = channel + ' · ready to copy';
+    $('embedLed').className = 'led live';
+  }
+
+  // ---------- wire up controls ----------
+  $('recBtn').addEventListener('click', ()=>{
+    if(state.recording) stopRecording(false);
+    else startRecording();
+  });
+
+  $('connectBtn').addEventListener('click', ()=>{
+    const ch = $('channelInput').value.trim().toLowerCase();
+    if(!ch) return;
+    state.channel = ch;
+    state.videoSrcUrl = null;
+    state.sessionKey = null;
+    $('lblChannel').textContent = ch;
+    log('Connecting to channel "' + ch + '"…');
+    buildEmbed(ch);
+    startPolling();
+  });
+
+  $('loadManualBtn').addEventListener('click', ()=>{
+    const url = $('manualUrl').value.trim();
+    if(!url) return;
+    state.videoSrcUrl = null;
+    loadSource(url, true);
+  });
+
+  $('copyEmbedBtn').addEventListener('click', ()=>{
+    const text = $('embedOut').textContent;
+    if(!text || text.startsWith('Connect to a channel')){
+      toast('Connect to a channel first');
+      return;
+    }
+    navigator.clipboard.writeText(text).then(()=>{
+      toast('Embed code copied to clipboard');
+      log('Embed code copied to clipboard.', 'ok');
+    }).catch(err=>{
+      toast('Copy failed — select the code manually');
+      log('Could not copy automatically — select and copy the code manually: ' + err.message, 'warn');
+    });
+  });
+
+  $('downloadEmbedBtn').addEventListener('click', ()=>{
+    const text = $('embedOut').textContent;
+    if(!text || text.startsWith('Connect to a channel')){
+      toast('Connect to a channel first');
+      return;
+    }
+    const filename = $('embedFilename').textContent || 'embed.html';
+    const standalone = '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+      '<title>' + state.channel + ' — AngelThump embed</title>\n</head>\n<body style="margin:0;background:#0a0c10;">\n' +
+      text + '\n</body>\n</html>';
+    const blob = new Blob([standalone], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('Downloaded ' + filename);
+    log('Embed downloaded as standalone ' + filename + '.', 'ok');
+  });
+
+  // ---------- boot ----------
+  log('Signal Desk ready. Enter a channel and press Connect.');
+  $('lblChannel').textContent = state.channel;
+  buildEmbed(state.channel);
+  startPolling();
+
+})();
+</script>
+</body>
+</html>
