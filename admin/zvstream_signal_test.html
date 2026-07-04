@@ -785,7 +785,7 @@
   function buildWatermarkedStream(sourceStream, sourceEl){
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    let rafId = null;
+    let timerId = null;
 
     function sizeCanvas(){
       const w = sourceEl.videoWidth || 1280;
@@ -814,13 +814,19 @@
         ctx.fillText('zonevault', canvas.width - pad, canvas.height - pad);
         ctx.restore();
       }
-      rafId = requestAnimationFrame(drawFrame);
     }
-    rafId = requestAnimationFrame(drawFrame);
+    // Using setInterval instead of requestAnimationFrame here on purpose:
+    // requestAnimationFrame is fully paused by the browser the moment the tab
+    // is backgrounded or the phone's screen locks — which froze the canvas
+    // (and therefore the whole recording) after about a second on mobile.
+    // setInterval keeps firing in the background, so recording keeps going
+    // for its full length even if the screen locks mid-recording.
+    timerId = setInterval(drawFrame, 1000/30);
+    drawFrame();
 
     const canvasStream = canvas.captureStream ? canvas.captureStream(30) : null;
     if(!canvasStream){
-      cancelAnimationFrame(rafId);
+      clearInterval(timerId);
       throw new Error('canvas.captureStream not supported in this browser');
     }
     const audioTracks = sourceStream.getAudioTracks ? sourceStream.getAudioTracks() : [];
@@ -828,7 +834,7 @@
 
     return {
       stream: canvasStream,
-      stop: function(){ if(rafId) cancelAnimationFrame(rafId); }
+      stop: function(){ if(timerId) clearInterval(timerId); }
     };
   }
 
