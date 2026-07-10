@@ -336,10 +336,34 @@
                         <label>Event Title</label>
                         <input type="text" id="ev-title" placeholder="e.g. LIVE CONCERT DAY 1">
                     </div>
-                    <div class="form-group" style="display: flex; gap: 12px;">
-                        <div style="flex:1"><label>Date</label><input type="date" id="ev-date"></div>
-                        <div style="flex:1"><label>Time</label><input type="time" id="ev-time"></div>
+
+                    <div class="form-group" style="border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; background: rgba(255,255,255,0.02);">
+                        <label style="color: var(--accent); margin-bottom: 12px;">Day 1 Schedule</label>
+                        <div style="display: flex; gap: 12px;">
+                            <div style="flex:1"><label>Date</label><input type="date" id="ev-date-day1"></div>
+                            <div style="flex:1"><label>Time</label><input type="time" id="ev-time-day1"></div>
+                        </div>
                     </div>
+
+                    <div class="form-group" style="border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; background: rgba(255,255,255,0.02);">
+                        <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px;">
+                            <span style="color: var(--accent);">Day 2 Schedule (optional)</span>
+                            <span style="display:flex; align-items:center; gap:8px; text-transform:none; font-weight:500; color: var(--text-muted); font-size:12px;">
+                                Enable
+                                <label class="switch" style="width:36px; height:20px;">
+                                    <input type="checkbox" id="ev-day2-toggle" onchange="toggleDay2()">
+                                    <span class="slider"></span>
+                                </label>
+                            </span>
+                        </label>
+                        <div id="ev-day2-fields" style="display:none;">
+                            <div style="display: flex; gap: 12px;">
+                                <div style="flex:1"><label>Date</label><input type="date" id="ev-date-day2"></div>
+                                <div style="flex:1"><label>Time</label><input type="time" id="ev-time-day2"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label>Target Player Page (HTML File)</label>
                         <input type="text" id="ev-page" value="live.html" placeholder="e.g. live.html">
@@ -457,6 +481,15 @@ function toggleMobileSidebar() {
     document.getElementById('mobileSidebar').classList.toggle('open');
 }
 
+function toggleDay2() {
+    const enabled = document.getElementById('ev-day2-toggle').checked;
+    document.getElementById('ev-day2-fields').style.display = enabled ? 'block' : 'none';
+    if (!enabled) {
+        document.getElementById('ev-date-day2').value = '';
+        document.getElementById('ev-time-day2').value = '';
+    }
+}
+
 // INITIALIZATION
 const firebaseConfig = {
   apiKey: "AIzaSyAeaQVRzcL9qvGRKpqGyPKolTMltieN3zU",
@@ -523,6 +556,19 @@ async function rejectRequest(username) {
 }
 
 // --- 2. LOAD ALL EVENTS DATA ---
+function formatScheduleSub(ev) {
+    // Supports both legacy single-day events (date/time) and new day1/day2 events
+    if (ev.day1_date || ev.day2_date) {
+        let html = `Day 1: <span style="color:var(--text-main);">${ev.day1_date || '-'} @ ${ev.day1_time || '-'}</span>`;
+        if (ev.day2_date) {
+            html += `<br>Day 2: <span style="color:var(--text-main);">${ev.day2_date} @ ${ev.day2_time || '-'}</span>`;
+        }
+        return html;
+    }
+    // Fallback for old events created before this update
+    return `Schedule: <span style="color:var(--text-main);">${ev.date || '-'} @ ${ev.time || '-'}</span>`;
+}
+
 function loadEvents() {
     dbRealtime.ref('live_events').on('value', (snapshot) => {
         const list = document.getElementById("events-list");
@@ -544,7 +590,7 @@ function loadEvents() {
                     <div class="list-title">${ev.title}</div>
                     <div class="list-sub">
                         Event ID: <span style="font-family:monospace;">${id}</span><br>
-                        Schedule: <span style="color:var(--text-main);">${ev.date} @ ${ev.time}</span><br>
+                        ${formatScheduleSub(ev)}<br>
                         Target Page: <span style="color:var(--accent); font-weight: 600;">${ev.player_page || 'live.html'}</span>
                     </div>
                     <div class="btn-row">
@@ -605,20 +651,43 @@ async function uploadToCloudinary(file) {
 async function postEvent() {
     const file = document.getElementById("ev-img-file").files[0];
     const title = document.getElementById("ev-title").value;
-    const date = document.getElementById("ev-date").value;
-    const time = document.getElementById("ev-time").value;
+    const day1Date = document.getElementById("ev-date-day1").value;
+    const day1Time = document.getElementById("ev-time-day1").value;
+    const day2Enabled = document.getElementById("ev-day2-toggle").checked;
+    const day2Date = document.getElementById("ev-date-day2").value;
+    const day2Time = document.getElementById("ev-time-day2").value;
     const playerPage = document.getElementById("ev-page").value || "live.html";
 
-    if(!file || !title || !date || !time) { alert("Data Incomplete."); return; }
+    if(!file || !title || !day1Date || !day1Time) { alert("Data Incomplete."); return; }
+    if(day2Enabled && (!day2Date || !day2Time)) { alert("Day 2 is enabled but date/time is incomplete."); return; }
+
     const createBtn = document.getElementById("createBtn");
     createBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deploying Architecture...';
 
     try {
         const imageUrl = await uploadToCloudinary(file);
-        dbRealtime.ref('live_events').push().set({ title: title, image: imageUrl, date: date, time: time, stream_title: title, stream_url: "", player_page: playerPage });
+        const eventData = {
+            title: title,
+            image: imageUrl,
+            // Legacy fields kept in sync with Day 1 so any older pages that read date/time still work
+            date: day1Date,
+            time: day1Time,
+            day1_date: day1Date,
+            day1_time: day1Time,
+            day2_date: day2Enabled ? day2Date : "",
+            day2_time: day2Enabled ? day2Time : "",
+            stream_title: title,
+            stream_url: "",
+            player_page: playerPage
+        };
+        dbRealtime.ref('live_events').push().set(eventData);
         createBtn.innerHTML = '<i class="fas fa-rocket"></i> Deploy Event Poster';
         showToast("Event architecture deployed!");
-        document.getElementById("ev-title").value = ''; document.getElementById("ev-date").value = ''; document.getElementById("ev-time").value = ''; document.getElementById("ev-page").value = 'live.html'; document.getElementById("ev-img-file").value = ''; document.getElementById("upload-status").innerText = "";
+        document.getElementById("ev-title").value = '';
+        document.getElementById("ev-date-day1").value = ''; document.getElementById("ev-time-day1").value = '';
+        document.getElementById("ev-date-day2").value = ''; document.getElementById("ev-time-day2").value = '';
+        document.getElementById("ev-day2-toggle").checked = false; toggleDay2();
+        document.getElementById("ev-page").value = 'live.html'; document.getElementById("ev-img-file").value = ''; document.getElementById("upload-status").innerText = "";
     } catch(e) { createBtn.innerHTML = '<i class="fas fa-rocket"></i> Deploy Event Poster'; }
 }
 
