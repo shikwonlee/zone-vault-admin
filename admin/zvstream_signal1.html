@@ -3,27 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Signal Desk — AngelThump Monitor</title>
+<title>Signal Desk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0a0c10;
-    --panel:#12161c;
-    --panel-2:#161b22;
-    --line:#232a35;
-    --text:#e7ecf2;
-    --muted:#7a8494;
-    --dim:#4b5361;
-    --signal:#35d48c;
-    --signal-dim:#1c5c42;
+    --bg:#0d0d0d;
+    --panel:#1a1a1a;
+    --panel-2:#222222;
+    --line:#333333;
+    --text:#f5f5f5;
+    --muted:#9a9a9a;
+    --dim:#5a5a5a;
+    --signal:#ffffff;
+    --signal-dim:#555555;
     --warn:#f0b429;
     --bad:#ff5470;
     --bad-dim:#5c2130;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
-  ::selection{background:var(--signal);color:#04150d;}
+  ::selection{background:var(--signal);color:#000;}
   .wrap{max-width:1100px;margin:0 auto;padding:20px 18px 60px;}
 
   /* ---------- header ---------- */
@@ -41,8 +41,8 @@
     font-weight:600;font-size:13px;padding:9px 16px;border-radius:6px;cursor:pointer;transition:.15s;}
   .btn:hover{border-color:var(--signal);color:var(--signal);}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
-  .btn.primary{background:var(--signal);border-color:var(--signal);color:#04150d;}
-  .btn.primary:hover{filter:brightness(1.08);color:#04150d;}
+  .btn.primary{background:var(--signal);border-color:var(--signal);color:#000;}
+  .btn.primary:hover{filter:brightness(1.08);color:#000;}
   .btn.danger{background:var(--bad);border-color:var(--bad);color:#2b0510;}
   .btn.danger:hover{filter:brightness(1.1);color:#2b0510;}
 
@@ -90,7 +90,7 @@
   .titlecard .v{font-family:'Inter',sans-serif;font-size:14px;font-weight:500;word-break:break-word;}
 
   /* ---------- video ---------- */
-  video{width:100%;border-radius:8px;background:#000;display:block;aspect-ratio:16/9;object-fit:contain;}
+  video{width:100%;border-radius:8px;background:#000;display:block;aspect-ratio:16/9;margin-top:10px;}
   .srcline{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:8px;
     word-break:break-all;}
 
@@ -129,7 +129,7 @@
   .embed-actions{display:flex;gap:8px;flex-wrap:wrap;}
   .btn.small{padding:7px 12px;font-size:12px;}
   .btn.ghost-signal{background:transparent;border-color:var(--signal-dim);color:var(--signal);}
-  .btn.ghost-signal:hover{background:var(--signal);color:#04150d;}
+  .btn.ghost-signal:hover{background:var(--signal);color:#000;}
   .code-box{position:relative;background:#080a0d;border:1px solid var(--line);border-radius:8px;
     padding:14px 16px;max-height:280px;overflow:auto;margin:0 0 12px;}
   .code-box pre{margin:0;font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.65;
@@ -137,6 +137,22 @@
   .code-box .tag{color:var(--signal);} .code-box .str{color:#f0b429;} .code-box .cmt{color:var(--dim);}
   .code-filename{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);
     letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+
+  /* ---------- embed config (passcode + theme) ---------- */
+  .embed-config{display:flex;flex-wrap:wrap;gap:14px;align-items:end;
+    margin-bottom:14px;padding:14px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;}
+  .embed-config .cfg-field{flex:1 1 180px;min-width:160px;}
+  .embed-config .cfg-field:last-child{flex:0 0 auto;min-width:0;}
+  .cfg-field label{display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:6px;}
+  .cfg-field input[type="text"], .cfg-field input[type="password"]{
+    width:100%;background:var(--panel);border:1px solid var(--line);color:var(--text);
+    font-family:'IBM Plex Mono',monospace;font-size:13px;padding:9px 10px;border-radius:6px;}
+  .cfg-field input[type="text"]:focus, .cfg-field input[type="password"]:focus{outline:none;border-color:var(--signal);}
+  .cfg-theme-row{display:flex;align-items:center;gap:8px;}
+  .cfg-theme-row input[type="color"]{width:44px;height:38px;padding:2px;background:var(--panel);
+    border:1px solid var(--line);border-radius:6px;cursor:pointer;}
+  .cfg-field small{display:block;margin-top:6px;font-size:11px;color:var(--dim);}
 
   /* ---------- toast ---------- */
   .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(16px);
@@ -213,10 +229,6 @@
         <input type="checkbox" id="autoStop" checked>
         <label for="autoStop">Auto-stop &amp; save when the stream goes offline</label>
       </div>
-      <div class="toggle-row">
-        <input type="checkbox" id="watermarkToggle" checked>
-        <label for="watermarkToggle">Add "zonevault" watermark to saved recording</label>
-      </div>
       <div id="downloadHolder"></div>
       <details>
         <summary>Advanced: manual HLS (.m3u8) URL override</summary>
@@ -228,6 +240,37 @@
     <!-- EMBED CODE -->
     <div class="panel" style="grid-column:1/-1;">
       <h2>Embed Code</h2>
+
+      <div class="embed-config">
+        <div class="cfg-field">
+          <label for="embedPasscode">Viewer passcode (blank = no gate)</label>
+          <input type="text" id="embedPasscode" placeholder="e.g. finaleinseoul" autocomplete="off" spellcheck="false">
+          <small>Viewers must type this before the player loads.</small>
+        </div>
+        <div class="cfg-field">
+          <label for="embedStreamTitle">Stream title (blank = hidden)</label>
+          <input type="text" id="embedStreamTitle" placeholder="e.g. DAY6 FINALE in SEOUL" autocomplete="off" spellcheck="false">
+          <small>Shown under the player, like a caption.</small>
+        </div>
+        <div class="cfg-field">
+          <label for="embedTheme">Theme color</label>
+          <div class="cfg-theme-row">
+            <input type="color" id="embedTheme" value="#35d48c">
+            <input type="text" id="embedThemeHex" value="#35d48c" style="width:90px;">
+          </div>
+        </div>
+        <div class="cfg-field">
+          <label for="embedFilenameInput">Download filename</label>
+          <input type="text" id="embedFilenameInput" placeholder="e.g. my-embed" autocomplete="off" spellcheck="false">
+          <small>Used as the .html filename when you download.</small>
+        </div>
+        <div class="cfg-field">
+          <label>&nbsp;</label>
+          <button class="btn primary" id="createEmbedBtn">Create Embed Code</button>
+        </div>
+      </div>
+
+
       <div class="embed-head">
         <div class="embed-badge"><span class="led" id="embedLed"></span><span id="embedBadgeText">prdt · not generated yet</span></div>
         <div class="embed-actions">
@@ -250,7 +293,6 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fix-webm-duration@1.0.6/fix-webm-duration.js"></script>
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
 <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
 <script>
@@ -307,9 +349,7 @@
     masterVideo: null,
     captureStreamSupported: null,
     ffmpeg: null,
-    ffmpegLoading: null,
-    previewStream: null,
-    watermarkStop: null
+    ffmpegLoading: null
   };
 
   const video = $('video');
@@ -431,9 +471,6 @@
   }
 
   // ---------- real measured bitrate (hls.js fragment-load byte counters) ----------
-  // level.bitrate is just the nominal value advertised in the manifest. To show
-  // the *actual* achieved throughput we track real bytes-per-second from every
-  // fragment hls.js downloads, over a rolling ~8s window.
   function trackFragBytes(data){
     try{
       const stats = data && data.frag && data.frag.stats;
@@ -455,11 +492,6 @@
     return Math.round((totalBytes * 8 / 1000) / (spanMs / 1000));
   }
 
-  // ---------- real playback stats (AngelThump's API doesn't expose bitrate/res/fps,
-  // so we read them straight off the actual HLS stream via hls.js levels + fragment
-  // byte counters + the video element's own playback-quality counters). These are
-  // sampled off the always-on capture element (state.masterVideo), not the visible
-  // preview, so pausing the preview never blanks the readings. ----------
   function sampleVideoQuality(){
     const src = state.masterVideo || video;
     if(!state.live || !state.videoSrcUrl || src.readyState < 2){
@@ -493,8 +525,6 @@
           fps = Math.round(dFrames / dt);
           dropRatio = dFrames > 0 ? Math.min(1, Math.max(0, dDropped / dFrames)) : 0;
         }
-        // dFrames < 0 means the underlying counters got reset (source swap) —
-        // skip this sample instead of showing a bogus negative-derived fps.
       }
       state.lastQuality = { t: now, frames: q.totalVideoFrames, dropped: q.droppedVideoFrames };
     }
@@ -503,18 +533,12 @@
       $('chipFps').textContent = state.fpsEma;
     }
 
-    // Buffer health → signal quality %. A healthy live buffer sits a few seconds
-    // ahead of playback; dropped frames pull the reading down.
     let bufferAhead = 0;
     try{
       if(src.buffered && src.buffered.length){
         bufferAhead = Math.max(0, src.buffered.end(src.buffered.length - 1) - src.currentTime);
       }
     }catch(e){}
-    // Recalibrated: a live HLS edge buffer of ~3-5s is already healthy in practice
-    // (the old /8s target under-read normal streams into the 60-70% band). Target
-    // buffer is now 5s for a "full" reading, plus a stability floor so a clean,
-    // drop-free stream doesn't get punished just for sitting close to the live edge.
     const targetBuffer = 5;
     let healthPct = Math.max(0, Math.min(100, (bufferAhead / targetBuffer) * 100));
     if(dropRatio === 0 && bufferAhead > 1){
@@ -525,14 +549,12 @@
   }
   setInterval(sampleVideoQuality, 1000);
 
-  // ---------- status / led ----------
   function setStatus(kind, text){
     const led = $('statusLed');
     led.className = 'led' + (kind ? ' '+kind : '');
     $('statusText').textContent = text;
   }
 
-  // ---------- uptime clock ----------
   function startUptimeClock(){
     if(state.uptimeTimer) clearInterval(state.uptimeTimer);
     state.uptimeTimer = setInterval(()=>{
@@ -542,14 +564,6 @@
     },1000);
   }
 
-  // ---------- player setup ----------
-  // The HLS source is attached to a hidden "capture" element (videoCapture) that
-  // always keeps playing — that's what feeds the Signal Scope stats and the
-  // recorder. The visible preview video just mirrors that feed via
-  // captureStream(), so the user can pause/scrub the preview freely without
-  // ever interrupting the live readings or an in-progress recording. Browsers
-  // without captureStream() support fall back to the old behaviour (preview IS
-  // the source), with a note explaining that pausing it will pause recording too.
   function wirePreviewMirror(masterEl){
     const canSplit = !!(masterEl.captureStream || masterEl.mozCaptureStream);
     state.captureStreamSupported = canSplit;
@@ -560,20 +574,12 @@
         video.muted = true;
         video.play().catch(()=>{});
         state.masterVideo = masterEl;
-        // Keep this exact stream so the recorder can reuse it later instead of
-        // calling captureStream() a second time on the same element. Calling
-        // captureStream() twice on one <video> is what was silently killing the
-        // preview's audio track on mobile the moment recording started — the
-        // recorder now grabs the SAME stream instead of making a new one.
-        state.previewStream = stream;
         return;
       }catch(err){
         log('Preview mirroring failed (' + err.message + ') — falling back to direct playback.', 'warn');
       }
     }
-    // Fallback: preview element itself is the source.
     state.masterVideo = video;
-    state.previewStream = null;
   }
 
   function loadSource(url, force){
@@ -621,7 +627,6 @@
     }
   }
 
-  // ---------- API polling ----------
   async function pollOnce(){
     const channel = state.channel;
     let data;
@@ -638,10 +643,8 @@
       return;
     }
 
-    // Primary signal: can we derive a playback manifest? (requires data.type === 'live', user + ingest present)
     const manifest = deriveManifest(data);
 
-    // Fallback heuristic for API shapes that don't match the user/ingest/type structure
     const liveVal = deepFind(data, ['live','isLive','is_live','online','status']);
     const explicitlyOffline = liveVal === false || liveVal === 'offline' || data.type === 'offline';
     const looksLive = !!manifest || liveVal === true || liveVal === 'live' || liveVal === 'online';
@@ -688,14 +691,11 @@
 
   function $statViewersReset(){ $('statViewers').textContent = '—'; }
 
-  // Parses AngelThump's createdAt into a real epoch-ms timestamp so Uptime
-  // reflects how long the broadcaster has actually been live — not how long
-  // ago this dashboard happened to detect it.
   function parseCreatedAt(value){
     if(value === undefined || value === null || value === '') return null;
     const asNum = Number(value);
     if(!isNaN(asNum)){
-      return asNum > 1e12 ? asNum : asNum * 1000; // seconds vs ms epoch
+      return asNum > 1e12 ? asNum : asNum * 1000;
     }
     const parsed = Date.parse(value);
     return isNaN(parsed) ? null : parsed;
@@ -723,20 +723,13 @@
     const title = deepFind(data, ['title','stream_title','streamTitle']);
     $('statTitle').textContent = title || '—';
 
-    // Bitrate / resolution / fps are read live off the actual HLS stream by
-    // sampleVideoQuality() — AngelThump's API doesn't expose these fields.
-
-    // Prefer the derived manifest (AngelThump doesn't return a raw .m3u8 field).
-    // Falls back to scanning the response in case the API shape ever changes.
     if(manifest){
       if(manifest.sessionKey !== state.sessionKey){
-        // New session (fresh connect or a reconnect after a drop) — swap the player over.
         const isReconnect = state.sessionKey !== null;
         state.sessionKey = manifest.sessionKey;
         loadSource(manifest.url, true);
-        buildEmbed(state.channel);
+        buildEmbed(state.channel, $('embedPasscode').value, $('embedThemeHex').value, $('embedStreamTitle').value);
         if(isReconnect){
-          // Fresh broadcast session — restart the uptime clock from its real start time.
           state.liveSince = startedAt || Date.now();
           startUptimeClock();
           log('Reconnect detected (new session) — player & embed swapped to new manifest, uptime reset.', 'ok');
@@ -759,7 +752,6 @@
     state.pollTimer = setInterval(pollOnce, 5000);
   }
 
-  // ---------- recording ----------
   function pickMimeType(){
     const candidates = [
       'video/mp4;codecs=avc1,mp4a',
@@ -776,80 +768,11 @@
     return null;
   }
 
-  // Draws the source video's frames onto a hidden canvas every animation
-  // frame and burns a small, semi-transparent "zonevault" watermark into the
-  // bottom-right corner. The canvas's own video track (plus the original
-  // audio track) is what actually gets handed to MediaRecorder, so the
-  // watermark ends up baked into the saved file only — the visible preview
-  // <video> element is never touched by this.
-  function buildWatermarkedStream(sourceStream, sourceEl){
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    let timerId = null;
-
-    function sizeCanvas(){
-      const w = sourceEl.videoWidth || 1280;
-      const h = sourceEl.videoHeight || 720;
-      if(canvas.width !== w || canvas.height !== h){
-        canvas.width = w;
-        canvas.height = h;
-      }
-    }
-
-    function drawFrame(){
-      sizeCanvas();
-      if(canvas.width && canvas.height){
-        try{ ctx.drawImage(sourceEl, 0, 0, canvas.width, canvas.height); }catch(e){}
-        const fontSize = Math.max(10, Math.round(canvas.width * 0.015));
-        const pad = Math.max(8, Math.round(canvas.width * 0.012));
-        ctx.save();
-        ctx.font = '600 ' + fontSize + 'px Inter, Arial, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'bottom';
-        ctx.shadowColor = 'rgba(0,0,0,0.95)';
-        ctx.shadowBlur = Math.max(2, Math.round(fontSize * 0.35));
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
-        ctx.fillStyle = 'rgba(255,255,255,0.55)';
-        ctx.fillText('zonevault', canvas.width - pad, canvas.height - pad);
-        ctx.restore();
-      }
-    }
-    // Using setInterval instead of requestAnimationFrame here on purpose:
-    // requestAnimationFrame is fully paused by the browser the moment the tab
-    // is backgrounded or the phone's screen locks — which froze the canvas
-    // (and therefore the whole recording) after about a second on mobile.
-    // setInterval keeps firing in the background, so recording keeps going
-    // for its full length even if the screen locks mid-recording.
-    timerId = setInterval(drawFrame, 1000/30);
-    drawFrame();
-
-    const canvasStream = canvas.captureStream ? canvas.captureStream(30) : null;
-    if(!canvasStream){
-      clearInterval(timerId);
-      throw new Error('canvas.captureStream not supported in this browser');
-    }
-    const audioTracks = sourceStream.getAudioTracks ? sourceStream.getAudioTracks() : [];
-    audioTracks.forEach(t => canvasStream.addTrack(t));
-
-    return {
-      stream: canvasStream,
-      stop: function(){ if(timerId) clearInterval(timerId); }
-    };
-  }
-
   function startRecording(){
     const source = state.masterVideo || video;
     let stream;
     try{
-      // Reuse the stream already created for the preview instead of calling
-      // captureStream() again on the same element (see wirePreviewMirror note
-      // above) — this is the fix for the preview losing sound on mobile.
-      if(state.previewStream && source !== video){
-        stream = state.previewStream;
-      } else {
-        stream = source.captureStream ? source.captureStream() : (source.mozCaptureStream ? source.mozCaptureStream() : null);
-      }
+      stream = source.captureStream ? source.captureStream() : (source.mozCaptureStream ? source.mozCaptureStream() : null);
       if(!stream) throw new Error('captureStream not supported in this browser');
     }catch(err){
       log('Could not capture video stream: ' + err.message, 'err');
@@ -865,52 +788,17 @@
       log('No supported recording format found in this browser.', 'err');
       return;
     }
-
-    // Try to burn the zonevault watermark into the recording via a canvas
-    // pass-through — but only if the "Add zonevault watermark" checkbox is
-    // checked. If it's unchecked, or the browser can't do the canvas overlay
-    // (older mobile browsers), we fall back to recording the plain stream so
-    // recording still works either way.
-    let recordStream = stream;
-    state.watermarkStop = null;
-    const watermarkWanted = $('watermarkToggle') ? $('watermarkToggle').checked : true;
-    if(watermarkWanted){
-      try{
-        const watermarked = buildWatermarkedStream(stream, source);
-        recordStream = watermarked.stream;
-        state.watermarkStop = watermarked.stop;
-      }catch(err){
-        log('Watermark overlay unavailable on this browser, recording without it: ' + err.message, 'warn');
-      }
-    }
+    state.recExt = mime.includes('mp4') ? 'mp4' : 'webm';
+    log('Recording started (' + state.recExt.toUpperCase() + ').', 'ok');
 
     state.chunks = [];
     let recorder;
     try{
-      recorder = new MediaRecorder(recordStream, {mimeType: mime});
+      recorder = new MediaRecorder(stream, {mimeType: mime});
     }catch(err){
       log('MediaRecorder failed to start: ' + err.message, 'err');
-      if(state.watermarkStop){ state.watermarkStop(); state.watermarkStop = null; }
       return;
     }
-
-    // IMPORTANT: some Android/mobile browsers claim to support
-    // 'video/mp4;codecs=avc1,mp4a' but then silently record VP9/Opus inside an
-    // MP4-labelled container anyway. That file still plays fine in Chrome, but
-    // most native players (phone Gallery apps, Photos, chat-app previews) can't
-    // decode VP9-in-MP4 and it behaves like a stuck/endless "live" file. So we
-    // check recorder.mimeType — the codec actually granted, not the one we
-    // asked for — and only skip the MP4 conversion step if it's genuinely
-    // H.264/AAC compatible (explicitly reports avc1/h264). Anything else,
-    // including a bare "video/mp4" with no codec info we can trust, gets
-    // routed through the ffmpeg conversion step so the saved file is
-    // guaranteed real H.264/AAC.
-    const actualMime = (recorder.mimeType || mime).toLowerCase();
-    const isRealMp4 = (actualMime.includes('avc1') || actualMime.includes('h264')) &&
-      !actualMime.includes('vp8') && !actualMime.includes('vp9');
-    state.recExt = isRealMp4 ? 'mp4' : 'webm';
-    log('Recording started (' + state.recExt.toUpperCase() + (isRealMp4 ? '' : ', will convert to a compatible MP4 after stopping') + ').', 'ok');
-
     recorder.ondataavailable = e => {
       if(e.data && e.data.size > 0){
         state.chunks.push(e.data);
@@ -943,7 +831,6 @@
   function stopRecording(auto){
     if(!state.recording || !state.mediaRecorder) return;
     state.mediaRecorder.stop();
-    if(state.watermarkStop){ state.watermarkStop(); state.watermarkStop = null; }
     state.recording = false;
     $('recDot').classList.remove('on');
     $('recBtn').textContent = 'Start Recording';
@@ -973,10 +860,6 @@
     ]);
   }
 
-  // ---------- client-side MP4 conversion (ffmpeg.wasm — no server, no upload) ----------
-  // Loads core.js/wasm as blob: URLs first (toBlobURL) instead of letting the
-  // worker importScripts() them cross-origin directly — the old pattern would
-  // silently hang on some browsers/CSPs instead of erroring out.
   async function getFFmpeg(){
     if(state.ffmpeg) return state.ffmpeg;
     if(state.ffmpegLoading) return state.ffmpegLoading;
@@ -1028,27 +911,6 @@
     }
   }
 
-  // ---------- fix the "acts like a live stream / never ends" WEBM bug ----------
-  // MediaRecorder-produced WEBM files don't get a Duration written into their
-  // header, so players treat them as a live/unbounded stream instead of a
-  // fixed-length clip. This patches the correct duration into the blob before
-  // it's offered for download or handed to the MP4 converter. If the library
-  // fails to load for any reason, it just resolves the original blob so
-  // nothing else breaks.
-  function fixWebmBlobDuration(blob, durationMs){
-    return new Promise(function(resolve){
-      if(window.ysFixWebmDuration && durationMs > 0){
-        try{
-          ysFixWebmDuration(blob, durationMs, function(fixedBlob){ resolve(fixedBlob || blob); });
-          return;
-        }catch(e){
-          log('Could not patch WEBM duration (' + e.message + ') — file may play back like an endless stream.', 'warn');
-        }
-      }
-      resolve(blob);
-    });
-  }
-
   function finalizeRecording(){
     const blob = new Blob(state.chunks, {type: state.recExt==='mp4' ? 'video/mp4' : 'video/webm'});
     const stamp = new Date().toISOString().replace(/[:.]/g,'-');
@@ -1057,24 +919,17 @@
     updateRecMeta();
 
     if(state.recExt === 'mp4'){
-      // Browser recorded MP4 natively — nothing to convert.
       offerDownload(blob, baseName + '.mp4', true);
       return;
     }
 
-    const durationMs = state.recStart ? Math.max(0, Date.now() - state.recStart) : 0;
-    fixWebmBlobDuration(blob, durationMs).then(function(fixedWebmBlob){
-    // Most Chromium browsers can only MediaRecorder to WEBM, and WEBM often won't
-    // play on other devices — so we do NOT auto-download it. It's kept as a
-    // manual "backup" link only, in case the MP4 conversion below fails. The
-    // file that actually gets auto-saved is the converted MP4.
-    const backupLink = offerDownload(fixedWebmBlob, baseName + '.webm', false, true);
+    const backupLink = offerDownload(blob, baseName + '.webm', false, true);
     backupLink.textContent = 'Backup (WEBM, manual — may not play everywhere): ' + baseName + '.webm';
     $('recMeta').textContent = 'Format: WEBM (recorded) · Converting to MP4 locally… 0%';
     log('Recorded as WEBM (this browser can\'t MediaRecorder straight to MP4). Converting to MP4 in-browser before saving — no upload involved…', 'warn');
     toast('Converting to MP4…');
 
-    transcodeToMp4(fixedWebmBlob, (pct)=>{
+    transcodeToMp4(blob, (pct)=>{
       $('recMeta').textContent = 'Format: WEBM → MP4 · Converting… ' + pct + '%';
     }).then(mp4Blob=>{
       offerDownload(mp4Blob, baseName + '.mp4', true);
@@ -1083,57 +938,206 @@
       log('MP4 conversion done and downloaded — plays on any device now.', 'ok');
       toast('MP4 ready: ' + baseName + '.mp4');
     }).catch(err=>{
-      $('recMeta').textContent = 'Format: WEBM (MP4 conversion failed) · Size: ' + (fixedWebmBlob.size/1024/1024).toFixed(1) + ' MB';
+      $('recMeta').textContent = 'Format: WEBM (MP4 conversion failed) · Size: ' + (blob.size/1024/1024).toFixed(1) + ' MB';
       log('MP4 conversion failed (' + err.message + ') — auto-downloading the WEBM backup instead. Convert it with any video tool if needed.', 'err');
       backupLink.click();
       toast('MP4 conversion failed — WEBM backup downloaded instead');
     });
-    });
   }
 
   // ---------- embed code generator ----------
-  // Self-contained snippet powered by ArtPlayer (a real, actively-maintained
-  // player library) + hls.js for the actual HLS decoding. The control bar is
-  // stripped down to ONLY volume and fullscreen (everything else ArtPlayer
-  // ships with — settings, PiP, screenshot, hotkeys, playback-rate, etc. — is
-  // disabled). Own polling loop, own reconnect detection (compares
-  // createdAt/sessionKey), a LIVE/OFFLINE badge, HLS fatal-error auto-recovery,
-  // and on phones, fullscreen automatically forces landscape orientation.
-  function buildEmbed(channel){
-    const id = channel.replace(/[^a-z0-9_-]/gi,'') || 'channel';
-    const safeChannel = channel.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const snippet = `<!-- AngelThump embed for ${channel} — ArtPlayer, volume+fullscreen only, auto-reconnect, mobile auto-landscape -->
-<div id="at-wrap-${id}" class="at-wrap-${id}" style="position:relative;aspect-ratio:16/9;background:#0a0c10;border-radius:10px;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,sans-serif;">
-  <span id="at-badge-${id}" class="at-badge">OFFLINE</span>
-  <span id="at-msg-${id}" class="at-msg">${safeChannel} is offline.</span>
-  <div id="at-art-${id}" class="at-art" style="width:100%;height:100%;display:none;"></div>
-</div>
-<style>
-  #at-wrap-${id} .at-badge{position:absolute;top:10px;left:10px;z-index:5;font-size:11px;font-weight:700;letter-spacing:.06em;padding:4px 9px;border-radius:4px;background:rgba(10,13,18,.85);border:1px solid #ff5470;color:#ff5470;transition:.2s;}
-  #at-wrap-${id} .at-badge.live{border-color:#35d48c;color:#35d48c;}
-  #at-wrap-${id} .at-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7a8494;font-size:13px;text-align:center;padding:20px;background:#0a0c10;z-index:1;}
-  #at-wrap-${id} .at-art{background:#000;}
-  /* Mobile-fullscreen forced-landscape fallback (for browsers without Screen
-     Orientation lock support, e.g. iOS Safari in web-fullscreen mode) */
-  #at-wrap-${id}.at-force-landscape{
-    position:fixed !important;top:50% !important;left:50% !important;
-    width:100vh !important;height:100vw !important;
-    transform:translate(-50%,-50%) rotate(90deg) !important;
-    z-index:2147483647 !important;border-radius:0 !important;
-  }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"><\/script>
-<script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"><\/script>
-<script>
-(function(){
-  var CHANNEL = "${channel}";
-  var wrap = document.getElementById("at-wrap-${id}");
-  var artEl = document.getElementById("at-art-${id}");
-  var badge = document.getElementById("at-badge-${id}");
-  var msg = document.getElementById("at-msg-${id}");
-  var art = null, sessionKey = null, retryCount = 0, isLive = false;
-  var pollMs = 10000, countdown = 0, countdownTimer = null;
+  // The generated snippet hides everything behind a single obfuscated
+  // bootstrap: channel, passcode, theme, and title are base64-encoded and
+  // only decoded at runtime inside an eval'd blob, and the player markup is
+  // built with document.createElement (not printed as literal HTML), so
+  // "view source" on the host page shows only two library <script src> tags
+  // plus one opaque <script>eval(atob("..."))<\/script> line. This is
+  // obfuscation for casual viewers only — anyone can atob() it in a console
+  // — not real security for anything sensitive.
+  //
+  // passcode: if non-empty, wraps the ENTIRE host page in a full-screen
+  // gate (fixed, covers everything, locks body scroll) that must be
+  // unlocked before any polling or playback starts — matching the
+  // "Zone Vault" full-page gate pattern rather than a widget-local one.
+  // title: optional caption rendered under the player.
+  // themeColor: hex string for the badge / gate button / ArtPlayer accent.
+  function buildEmbed(channel, passcode, themeColor, title){
+    const id = 'atp' + Math.random().toString(36).slice(2, 8);
+    const theme = /^#[0-9a-fA-F]{6}$/.test(themeColor || '') ? themeColor : '#35d48c';
+    const hasGate = !!(passcode && String(passcode).length);
+    const hasTitle = !!(title && String(title).trim().length);
 
+    function b64(str){
+      try{ return btoa(unescape(encodeURIComponent(String(str)))); }
+      catch(e){ return btoa(String(str)); }
+    }
+    const channelB64 = b64(channel);
+    const passB64 = hasGate ? b64(passcode) : '';
+    const titleB64 = hasTitle ? b64(String(title).trim()) : '';
+
+    // ---- inner logic (pure ASCII — the only unicode-risky values, channel/
+    // passcode/title, are passed in as base64 literals and decoded at
+    // runtime) — this whole string gets base64'd again below and is what
+    // ends up hidden inside the single bootstrap <script> tag.
+    const inner = `
+(function(){
+  "use strict";
+  var hostScript = window.__atHostScript_${id};
+  var CHANNEL = decodeURIComponent(escape(atob("${channelB64}")));
+  var THEME = "${theme}";
+  var HAS_GATE = ${hasGate ? 'true' : 'false'};
+  var PASSCODE_B64 = "${passB64}";
+  var HAS_TITLE = ${hasTitle ? 'true' : 'false'};
+  var TITLE = HAS_TITLE ? decodeURIComponent(escape(atob("${titleB64}"))) : "";
+  var FORCE_CLASS = "${id}-landscape";
+
+  var pollMs = 10000, countdown = 0, countdownTimer = null;
+  var art = null, sessionKey = null, retryCount = 0, isLive = false;
+  var unlocked = !HAS_GATE;
+
+  /* ---------------- build player DOM (never printed as literal HTML) ---------------- */
+  var style = document.createElement("style");
+  style.textContent =
+    "#" + "${id}" + "-wrap{position:relative;aspect-ratio:16/9;background:#0a0c10;border-radius:10px;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:960px;margin:24px auto 0;}" +
+    "#" + "${id}" + "-wrap .atp-badge{position:absolute;top:10px;left:10px;z-index:5;font-size:11px;font-weight:700;letter-spacing:.06em;padding:4px 9px;border-radius:4px;background:rgba(10,13,18,.85);border:1px solid #ff5470;color:#ff5470;transition:.2s;}" +
+    "#" + "${id}" + "-wrap .atp-badge.live{border-color:" + THEME + ";color:" + THEME + ";}" +
+    "#" + "${id}" + "-wrap .atp-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7a8494;font-size:13px;text-align:center;padding:20px;background:#0a0c10;z-index:1;}" +
+    "#" + "${id}" + "-wrap .atp-art{background:#000;width:100%;height:100%;display:none;}" +
+    "#" + "${id}" + "-title{max-width:960px;margin:6px auto 0;padding:0 6px;color:#e6e9ee;font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:20px;font-weight:700;letter-spacing:.01em;text-align:center;line-height:1.35;}" +
+    "." + FORCE_CLASS + "{position:fixed !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) rotate(90deg) !important;z-index:2147483647 !important;border-radius:0 !important;margin:0 !important;}" +
+    "#atp-gate-${id}{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:#0a0c10;font-family:system-ui,-apple-system,Segoe UI,sans-serif;padding:20px;}" +
+    "#atp-gate-${id}.atp-gate-hidden{display:none;}" +
+    "#atp-gate-${id} form{display:flex;flex-direction:column;gap:12px;align-items:center;width:100%;max-width:280px;}" +
+    "#atp-gate-${id} .atp-gate-title{color:#c7cdd6;font-size:15px;font-weight:600;letter-spacing:.02em;text-align:center;margin-bottom:4px;}" +
+    "#atp-gate-${id} input{width:100%;box-sizing:border-box;padding:11px 14px;border-radius:6px;border:1px solid #2a2f3a;background:#12151b;color:#e6e9ee;font-size:15px;outline:none;text-align:center;letter-spacing:.05em;}" +
+    "#atp-gate-${id} input:focus{border-color:" + THEME + ";}" +
+    "#atp-gate-${id} button{width:100%;padding:11px 14px;border-radius:6px;border:none;background:" + THEME + ";color:#06210f;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.03em;}" +
+    "#atp-gate-${id} button:hover{filter:brightness(1.08);}" +
+    "#atp-gate-${id} .atp-gate-err{color:#ff5470;font-size:12px;text-align:center;display:none;}" +
+    "#atp-devtools-${id}{position:fixed;inset:0;z-index:2147483647;display:none;align-items:center;justify-content:center;background:#0a0c10;color:#7a8494;font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px;text-align:center;padding:20px;}" +
+    "body.atp-locked-${id}{overflow:hidden;height:100vh;}";
+  document.head.appendChild(style);
+
+  var wrap = document.createElement("div");
+  wrap.id = "${id}-wrap";
+
+  var badge = document.createElement("span");
+  badge.className = "atp-badge";
+  badge.textContent = "OFFLINE";
+
+  var msg = document.createElement("span");
+  msg.className = "atp-msg";
+  msg.textContent = "Stream is offline.";
+
+  var artEl = document.createElement("div");
+  artEl.className = "atp-art";
+
+  wrap.appendChild(badge);
+  wrap.appendChild(msg);
+  wrap.appendChild(artEl);
+
+  var titleEl = null;
+  if(HAS_TITLE){
+    titleEl = document.createElement("div");
+    titleEl.id = "${id}-title";
+    titleEl.textContent = TITLE;
+  }
+
+  var anchor = hostScript || document.currentScript || document.body.lastChild;
+  var parent = (anchor && anchor.parentNode) ? anchor.parentNode : document.body;
+  parent.insertBefore(wrap, anchor && anchor.nextSibling ? anchor.nextSibling : null);
+  if(titleEl) parent.insertBefore(titleEl, wrap.nextSibling);
+
+  /* ---------------- full-page passcode gate ---------------- */
+  var gate = null, gateInput = null, gateErr = null;
+  if(HAS_GATE){
+    document.body.classList.add("atp-locked-${id}");
+    gate = document.createElement("div");
+    gate.id = "atp-gate-${id}";
+    var form = document.createElement("form");
+    var gt = document.createElement("div");
+    gt.className = "atp-gate-title";
+    gt.textContent = "Enter passcode to continue";
+    gateInput = document.createElement("input");
+    gateInput.type = "password";
+    gateInput.placeholder = "Passcode";
+    gateInput.autocomplete = "off";
+    gateInput.spellcheck = false;
+    var btn = document.createElement("button");
+    btn.type = "submit";
+    btn.textContent = "Unlock";
+    gateErr = document.createElement("div");
+    gateErr.className = "atp-gate-err";
+    gateErr.textContent = "Incorrect passcode. Try again.";
+    form.appendChild(gt);
+    form.appendChild(gateInput);
+    form.appendChild(btn);
+    form.appendChild(gateErr);
+    gate.appendChild(form);
+    document.body.appendChild(gate);
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var expected = "";
+      try{ expected = decodeURIComponent(escape(atob(PASSCODE_B64))); }catch(err){ expected = ""; }
+      if(gateInput.value === expected){
+        unlocked = true;
+        gateErr.style.display = "none";
+        gate.classList.add("atp-gate-hidden");
+        document.body.classList.remove("atp-locked-${id}");
+        poll();
+        setInterval(poll, pollMs);
+      } else {
+        gateErr.style.display = "block";
+        gateInput.value = "";
+        gateInput.focus();
+      }
+    });
+  }
+
+  var devtoolsBlockEl = document.createElement("div");
+  devtoolsBlockEl.id = "atp-devtools-${id}";
+  devtoolsBlockEl.textContent = "Please close developer tools to view this content.";
+  document.body.appendChild(devtoolsBlockEl);
+
+  /* ---------------- anti-inspect deterrents ----------------
+     Friction for casual users only — cannot stop someone who disables JS,
+     uses view-source, or runs devtools in a way that ignores these blocks.
+  */
+  document.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+  document.addEventListener("keydown", function(e){
+    var k = e.key;
+    var blockCombo =
+      k === "F12" ||
+      (e.ctrlKey && e.shiftKey && (k === "I" || k === "i" || k === "J" || k === "j" || k === "C" || k === "c")) ||
+      (e.ctrlKey && (k === "U" || k === "u" || k === "S" || k === "s")) ||
+      (e.metaKey && e.altKey && (k === "I" || k === "i" || k === "J" || k === "j"));
+    if(blockCombo){ e.preventDefault(); e.stopPropagation(); }
+  }, true);
+
+  // Soft signal: outer/inner window size gap from a docked devtools panel.
+  function sizeSuggestsDevtools(){
+    var wGap = window.outerWidth - window.innerWidth;
+    var hGap = window.outerHeight - window.innerHeight;
+    return wGap > 160 || hGap > 160;
+  }
+  setInterval(function(){
+    devtoolsBlockEl.style.display = sizeSuggestsDevtools() ? "flex" : "none";
+  }, 700);
+
+  // Hard signal: a tight, continuously-scheduled "debugger;" statement.
+  // Chrome (and most Chromium browsers) pause script execution on every
+  // "debugger;" line whenever DevTools is open at all, regardless of which
+  // panel is active. Re-scheduling it on a short timer means the page keeps
+  // re-pausing the instant execution resumes, which reads as the page being
+  // "stuck" until DevTools is closed. This has zero effect when DevTools is
+  // closed. It is still just a deterrent, not real protection.
+  (function antiDebugLoop(){
+    debugger;
+    setTimeout(antiDebugLoop, 80);
+  })();
+
+  /* ---------------- stream logic ---------------- */
   function regionHost(server){
     var map = { nyc:"nyc3", sfo:"sfo3", ams:"ams3", tor:"tor1", blr:"blr1", syd:"syd1", fra:"fra1", lon:"lon1", sgp:"sgp1" };
     var prefix = (server || "").split("-")[0];
@@ -1169,16 +1173,9 @@
     }, 1000);
   }
   function updateOfflineMsg(){
-    if(!isLive) msg.textContent = CHANNEL + " is offline — checking again in " + countdown + "s";
+    if(!isLive) msg.textContent = "Stream is offline — checking again in " + countdown + "s";
   }
 
-  // Trim the control bar down to ONLY volume + fullscreen. Built-in control
-  // DOM class names aren't officially documented, so instead of guessing exact
-  // selectors (which can silently hide everything if the guess is wrong), this
-  // inspects each control's className/data-name/title/aria-label for the words
-  // "volume" or "fullscreen". If it can't positively identify BOTH on a given
-  // pass, it leaves the default control bar untouched rather than risk hiding
-  // everything — a full control bar is a safer failure mode than a blank one.
   function trimControlsToVolumeAndFullscreen(){
     try{
       var root = art && art.template && art.template.$controls;
@@ -1188,8 +1185,8 @@
         var re = new RegExp(word, "i");
         var cls = el.className || "";
         var dataName = (el.getAttribute && el.getAttribute("data-name")) || "";
-        var title = (el.getAttribute && (el.getAttribute("title") || el.getAttribute("aria-label"))) || "";
-        return re.test(cls) || re.test(dataName) || re.test(title);
+        var titleAttr = (el.getAttribute && (el.getAttribute("title") || el.getAttribute("aria-label"))) || "";
+        return re.test(cls) || re.test(dataName) || re.test(titleAttr);
       }
       var volumeEls = kids.filter(function(k){ return looksLike(k, "volume"); });
       var fsEls = kids.filter(function(k){ return looksLike(k, "fullscreen"); });
@@ -1224,9 +1221,9 @@
       airplay: false,
       mutex: true,
       fullscreen: true,
-      fullscreenWeb: true,
+      fullscreenWeb: false,
       miniProgressBar: false,
-      theme: "#35d48c",
+      theme: THEME,
       customType: {
         m3u8: function(video, url){
           if(video.hls){ video.hls.destroy(); }
@@ -1247,16 +1244,24 @@
     art.on("ready", function(){ trimControlsToVolumeAndFullscreen(); });
     art.on("resize", function(){ trimControlsToVolumeAndFullscreen(); });
     art.on("fullscreen", function(state){ handleFullscreenChange(state); trimControlsToVolumeAndFullscreen(); });
-    art.on("fullscreenWeb", function(state){ handleFullscreenChange(state); trimControlsToVolumeAndFullscreen(); });
     return art;
   }
 
-  // ---------- mobile auto-landscape on fullscreen ----------
+  /* ---------------- mobile auto-landscape (symmetric-margin fix) ----------------
+     Uses window.innerWidth/innerHeight in JS (updated on resize) instead of
+     raw vh/vw CSS units, which can mismatch the true visible viewport on
+     mobile (e.g. when the address bar shows/hides) and produce a bigger
+     margin on one side than the other. Exact pixel sizing keeps both sides even.
+  */
   function isMobile(){
     return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "") || (window.innerWidth <= 900 && "ontouchstart" in window);
   }
   function isPortrait(){
     return window.matchMedia && window.matchMedia("(orientation: portrait)").matches;
+  }
+  function sizeForceLandscape(){
+    wrap.style.width = window.innerHeight + "px";
+    wrap.style.height = window.innerWidth + "px";
   }
   function handleFullscreenChange(state){
     if(state && isMobile()){
@@ -1274,21 +1279,26 @@
   }
   function applyCssRotateFallback(on){
     if(on && isPortrait()){
-      wrap.classList.add("at-force-landscape");
+      wrap.classList.add(FORCE_CLASS);
+      sizeForceLandscape();
+      window.addEventListener("resize", sizeForceLandscape);
     } else {
-      wrap.classList.remove("at-force-landscape");
+      wrap.classList.remove(FORCE_CLASS);
+      wrap.style.width = "";
+      wrap.style.height = "";
+      window.removeEventListener("resize", sizeForceLandscape);
     }
   }
   window.addEventListener("orientationchange", function(){
-    if(wrap.classList.contains("at-force-landscape") && !isPortrait()){
-      wrap.classList.remove("at-force-landscape");
+    if(wrap.classList.contains(FORCE_CLASS) && !isPortrait()){
+      applyCssRotateFallback(false);
     }
   });
 
   function setLive(live){
     isLive = live;
     badge.textContent = live ? "LIVE" : "OFFLINE";
-    badge.className = "at-badge" + (live ? " live" : "");
+    badge.className = "atp-badge" + (live ? " live" : "");
     artEl.style.display = live ? "block" : "none";
     msg.style.display = live ? "none" : "flex";
     if(live){
@@ -1321,15 +1331,36 @@
   }
 
   setLive(false);
-  poll();
-  setInterval(poll, pollMs);
-})();
-<\/script>`;
+  if(HAS_GATE){
+    // polling/playback only start once the correct passcode is submitted
+  } else {
+    poll();
+    setInterval(poll, pollMs);
+  }
+})();`;
+
+    const innerB64 = b64(inner);
+    const snippet = `<!-- Embed: source intentionally obfuscated (base64 bootstrap). ${hasGate ? 'Passcode-gated.' : 'No passcode gate.'} -->
+<script>window.__atHostScript_${id} = document.currentScript;<\/script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"><\/script>
+<script>eval(decodeURIComponent(escape(atob("${innerB64}"))));<\/script>`;
+
     $('embedOut').textContent = snippet;
-    $('embedFilename').textContent = 'embed-' + id + '.html';
-    $('embedBadgeText').textContent = channel + ' · ready to copy';
+    $('embedFilename').textContent = currentEmbedFilename();
+    $('embedBadgeText').textContent = (hasGate ? 'gated' : 'open') + ' · ' + id + ' · ready to copy';
     $('embedLed').className = 'led live';
   }
+
+  function currentEmbedFilename(){
+    const raw = $('embedFilenameInput').value.trim();
+    let name = raw || ('embed-' + state.channel);
+    name = name.replace(/\.html?$/i, '');
+    name = name.replace(/[^a-z0-9_\-]+/gi, '-').replace(/^-+|-+$/g, '');
+    if(!name) name = 'embed-' + state.channel;
+    return name + '.html';
+  }
+
 
   // ---------- wire up controls ----------
   $('recBtn').addEventListener('click', ()=>{
@@ -1345,8 +1376,30 @@
     state.sessionKey = null;
     $('lblChannel').textContent = ch;
     log('Connecting to channel "' + ch + '"…');
-    buildEmbed(ch);
+    buildEmbed(ch, $('embedPasscode').value, $('embedThemeHex').value, $('embedStreamTitle').value);
     startPolling();
+  });
+
+  // keep the color swatch and hex text field in sync
+  $('embedFilenameInput').addEventListener('input', ()=>{
+    $('embedFilename').textContent = currentEmbedFilename();
+  });
+
+  $('embedTheme').addEventListener('input', ()=>{
+    $('embedThemeHex').value = $('embedTheme').value;
+  });
+  $('embedThemeHex').addEventListener('input', ()=>{
+    const v = $('embedThemeHex').value.trim();
+    if(/^#[0-9a-fA-F]{6}$/.test(v)) $('embedTheme').value = v;
+  });
+
+  $('createEmbedBtn').addEventListener('click', ()=>{
+    const passcode = $('embedPasscode').value;
+    const themeHex = $('embedThemeHex').value.trim();
+    const streamTitle = $('embedStreamTitle').value;
+    buildEmbed(state.channel, passcode, themeHex, streamTitle);
+    log('Embed code regenerated' + (passcode ? ' with a passcode gate.' : ' (no passcode gate).'), 'ok');
+    toast(passcode ? 'Embed created with passcode gate' : 'Embed created (no gate)');
   });
 
   $('loadManualBtn').addEventListener('click', ()=>{
@@ -1394,7 +1447,7 @@
   // ---------- boot ----------
   log('Signal Desk ready. Enter a channel and press Connect.');
   $('lblChannel').textContent = state.channel;
-  buildEmbed(state.channel);
+  buildEmbed(state.channel, $('embedPasscode').value, $('embedThemeHex').value, $('embedStreamTitle').value);
   startPolling();
 
 })();
