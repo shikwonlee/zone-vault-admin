@@ -103,6 +103,8 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, update, get, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    // ADDED FIREBASE AUTH HERE
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"; 
 
     const firebaseConfig = {
         apiKey: "AIzaSyAs2S6iRhnYhmqNuF0QCCYu5NuzxHxIRv0",
@@ -113,13 +115,22 @@
         messagingSenderId: "308384754214",
         appId: "1:308384754214:web:2938e76cd29b288f75d4e7"
     };
+    
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const auth = getAuth(app); // INITIALIZED AUTH HERE
+
+    // Listen for auth state to ensure tokens are attached to database requests
+    onAuthStateChanged(auth, (user) => {
+        if (!user) {
+            console.error("Admin is not logged in!");
+            // Optional: You could redirect them to login here if you want
+        }
+    });
 
     let allUsersData = {};
-    let selectedUsersMap = new Map(); // Stores selected UIDs and their Names
+    let selectedUsersMap = new Map();
 
-    // Toggle Inputs based on selection
     window.toggleCodeTarget = function() {
         const target = document.getElementById('codeTarget').value;
         const uidGroup = document.getElementById('uidInputGroup');
@@ -132,13 +143,13 @@
         else if (target === 'multiple') multipleGroup.style.display = 'block';
     }
 
-    // Modal Operations
     window.openUserModal = async function() {
         document.getElementById('userSelectionModal').style.display = 'flex';
         
         if (Object.keys(allUsersData).length === 0) {
             try {
-                const snap = await get(ref(db, 'users'));
+                // This request will now succeed because Firebase knows you are logged in
+                const snap = await get(ref(db, 'users')); 
                 if (snap.exists()) {
                     allUsersData = snap.val();
                     renderModalUsers();
@@ -147,6 +158,7 @@
                 }
             } catch (err) {
                 console.error("Error fetching users:", err);
+                document.getElementById('modalUserList').innerHTML = `<div style="text-align: center; color: #ef4444; font-size: 13px; margin-top: 20px;">Error: ${err.message}</div>`;
             }
         } else {
             renderModalUsers();
@@ -162,7 +174,6 @@
         renderModalUsers(document.getElementById('userSearchBox').value.toLowerCase());
     }
 
-    // Render Users inside Modal
     function renderModalUsers(searchQuery = '') {
         const listContainer = document.getElementById('modalUserList');
         listContainer.innerHTML = '';
@@ -184,14 +195,13 @@
                     <i class="fas fa-check-circle check-icon"></i>
                 `;
                 
-                // Toggle Selection
                 itemDiv.onclick = () => {
                     if (selectedUsersMap.has(uid)) {
                         selectedUsersMap.delete(uid);
                     } else {
                         selectedUsersMap.set(uid, name);
                     }
-                    renderModalUsers(searchQuery); // Re-render to update UI
+                    renderModalUsers(searchQuery); 
                 };
                 
                 listContainer.appendChild(itemDiv);
@@ -199,10 +209,8 @@
         }
     }
 
-    // Update Main Form UI with Selected Tags
     function updateSelectedTagsUI() {
         const container = document.getElementById('selectedTagsContainer');
-        const emptyMsg = document.getElementById('emptyTagMsg');
         
         container.style.display = 'flex';
         
@@ -223,10 +231,9 @@
     window.removeUserTag = function(uid) {
         selectedUsersMap.delete(uid);
         updateSelectedTagsUI();
-        renderModalUsers(); // Update modal states too
+        renderModalUsers(); 
     }
 
-    // Process Assignment
     window.assignCode = async function() {
         const targetType = document.getElementById('codeTarget').value;
         const targetUid = document.getElementById('targetUid').value.trim();
@@ -275,7 +282,6 @@
                 statusMsg.style.color = '#22c55e';
                 statusMsg.innerText = `Code assigned to ${selectedUsersMap.size} user profiles!`;
                 
-                // Clear selection after success
                 selectedUsersMap.clear();
                 updateSelectedTagsUI();
             } 
@@ -298,7 +304,6 @@
                 }
             }
 
-            // Reset inputs
             document.getElementById('videoTitle').value = '';
             document.getElementById('accessCode').value = '';
             if (targetType === 'single') document.getElementById('targetUid').value = '';
