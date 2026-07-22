@@ -16,6 +16,7 @@
         .styled-input:focus { border-color: #a1a1aa; }
         .btn { width: 100%; padding: 12px; background: #fff; color: #000; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 14px; margin-top: 10px; }
         .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn:disabled { background: #52525b; color: #a1a1aa; cursor: not-allowed; }
         .btn-secondary { background: #27272a; color: #fff; border: 1px solid #3f3f46; }
         
         /* Multiple Selection Tags */
@@ -63,7 +64,7 @@
 
     <!-- For Multiple Users -->
     <div class="input-group" id="multipleInputGroup" style="display: none;">
-        <button class="btn btn-secondary" onclick="openUserModal()"><i class="fas fa-users"></i> Select Users</button>
+        <button class="btn btn-secondary" onclick="openUserModal()" id="selectUsersBtn" disabled><i class="fas fa-spinner fa-spin"></i> Authenticating...</button>
         <div id="selectedTagsContainer" class="selected-tags-container">
             <span style="color:#a1a1aa; font-size:12px; font-style:italic;" id="emptyTagMsg">No users selected.</span>
         </div>
@@ -102,8 +103,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, update, get, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-    // ADDED FIREBASE AUTH HERE
+    import { getDatabase, ref, update, get, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"; 
 
     const firebaseConfig = {
@@ -118,18 +118,44 @@
     
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const auth = getAuth(app); // INITIALIZED AUTH HERE
-
-    // Listen for auth state to ensure tokens are attached to database requests
-    onAuthStateChanged(auth, (user) => {
-        if (!user) {
-            console.error("Admin is not logged in!");
-            // Optional: You could redirect them to login here if you want
-        }
-    });
+    const auth = getAuth(app);
 
     let allUsersData = {};
     let selectedUsersMap = new Map();
+
+    // 1. GUARANTEED AUTHENTICATION FETCH (Mirrors your User Directory logic)
+    onAuthStateChanged(auth, (user) => {
+        const selectBtn = document.getElementById('selectUsersBtn');
+        const statusMsg = document.getElementById('codeStatusMsg');
+
+        if (user) {
+            console.log("Admin verified:", user.uid);
+            
+            // Pre-load users immediately after auth is confirmed
+            const usersRef = ref(db, 'users');
+            onValue(usersRef, (snap) => {
+                if (snap.exists()) {
+                    allUsersData = snap.val();
+                    selectBtn.disabled = false;
+                    selectBtn.innerHTML = '<i class="fas fa-users"></i> Select Users';
+                } else {
+                    selectBtn.innerHTML = 'No users found';
+                }
+            }, (error) => {
+                console.error("Permission denied reading users:", error);
+                statusMsg.style.display = 'block'; 
+                statusMsg.style.color = '#ef4444';
+                statusMsg.innerText = "Error: You do not have permission to read users.";
+            });
+            
+        } else {
+            console.error("Admin is not logged in!");
+            selectBtn.innerHTML = '<i class="fas fa-lock"></i> Not Logged In';
+            statusMsg.style.display = 'block'; 
+            statusMsg.style.color = '#ef4444';
+            statusMsg.innerText = "Please log in as an Admin to use this panel.";
+        }
+    });
 
     window.toggleCodeTarget = function() {
         const target = document.getElementById('codeTarget').value;
@@ -143,26 +169,9 @@
         else if (target === 'multiple') multipleGroup.style.display = 'block';
     }
 
-    window.openUserModal = async function() {
+    window.openUserModal = function() {
         document.getElementById('userSelectionModal').style.display = 'flex';
-        
-        if (Object.keys(allUsersData).length === 0) {
-            try {
-                // This request will now succeed because Firebase knows you are logged in
-                const snap = await get(ref(db, 'users')); 
-                if (snap.exists()) {
-                    allUsersData = snap.val();
-                    renderModalUsers();
-                } else {
-                    document.getElementById('modalUserList').innerHTML = '<div style="text-align: center; color: #a1a1aa; font-size: 13px; margin-top: 20px;">No users found in database.</div>';
-                }
-            } catch (err) {
-                console.error("Error fetching users:", err);
-                document.getElementById('modalUserList').innerHTML = `<div style="text-align: center; color: #ef4444; font-size: 13px; margin-top: 20px;">Error: ${err.message}</div>`;
-            }
-        } else {
-            renderModalUsers();
-        }
+        renderModalUsers();
     }
 
     window.closeUserModal = function() {
@@ -177,6 +186,11 @@
     function renderModalUsers(searchQuery = '') {
         const listContainer = document.getElementById('modalUserList');
         listContainer.innerHTML = '';
+
+        if (Object.keys(allUsersData).length === 0) {
+            listContainer.innerHTML = '<div style="text-align: center; color: #a1a1aa; font-size: 13px; margin-top: 20px;">No users available.</div>';
+            return;
+        }
 
         for (const [uid, data] of Object.entries(allUsersData)) {
             const name = data.name || data.telegramUsername || "Unknown Member";
@@ -241,6 +255,11 @@
         const accessCode = document.getElementById('accessCode').value.trim();
         const statusMsg = document.getElementById('codeStatusMsg');
 
+        if (!auth.currentUser) {
+            statusMsg.style.display = 'block'; statusMsg.style.color = '#ef4444';
+            statusMsg.innerText = "You must be logged in to assign codes."; return;
+        }
+
         if (!videoTitle || !accessCode) {
             statusMsg.style.display = 'block'; statusMsg.style.color = '#ef4444';
             statusMsg.innerText = "Please provide both Video Title and Code."; return;
@@ -286,17 +305,15 @@
                 updateSelectedTagsUI();
             } 
             else if (targetType === 'all') {
-                const usersSnap = await get(ref(db, 'users'));
-                if (usersSnap.exists()) {
-                    const users = usersSnap.val();
-                    Object.keys(users).forEach(uid => {
+                if (Object.keys(allUsersData).length > 0) {
+                    Object.keys(allUsersData).forEach(uid => {
                         const newCodeKey = push(ref(db, `users/${uid}/codes`)).key;
                         updates[`users/${uid}/codes/${newCodeKey}`] = codeData;
                     });
                     
                     await update(ref(db), updates);
                     statusMsg.style.color = '#22c55e';
-                    statusMsg.innerText = `Code assigned to all ${Object.keys(users).length} profiles!`;
+                    statusMsg.innerText = `Code assigned to all ${Object.keys(allUsersData).length} profiles!`;
                 } else {
                     statusMsg.style.color = '#ef4444';
                     statusMsg.innerText = "No users found in database.";
