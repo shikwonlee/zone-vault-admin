@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Assign Codes</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Outfit', sans-serif; background: #09090b; color: #fff; padding: 40px; display: flex; justify-content: center; margin: 0; }
+        .admin-card { background: #18181b; border: 1px solid #27272a; padding: 30px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
+        h3 { margin-top: 0; margin-bottom: 20px; font-size: 20px; border-bottom: 1px solid #27272a; padding-bottom: 15px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 13px; color: #a1a1aa; margin-bottom: 5px; font-weight: 600; }
+        .styled-input { width: 100%; padding: 12px; background: #27272a; border: 1px solid #3f3f46; border-radius: 8px; color: #fff; font-family: inherit; font-size: 14px; outline: none; box-sizing: border-box; }
+        .styled-input:focus { border-color: #a1a1aa; }
+        .btn { width: 100%; padding: 12px; background: #fff; color: #000; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 14px; margin-top: 10px; }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn-secondary { background: #27272a; color: #fff; border: 1px solid #3f3f46; }
+        
+        /* Multiple Selection Tags */
+        .selected-tags-container { display: none; margin-top: 10px; flex-wrap: wrap; gap: 8px; padding: 10px; background: #09090b; border-radius: 8px; border: 1px dashed #3f3f46; min-height: 40px; }
+        .user-tag { background: #22c55e; color: #000; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+        .user-tag i { cursor: pointer; }
+
+        /* Modal Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .modal-content { background: #18181b; border: 1px solid #27272a; width: 100%; max-width: 450px; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; max-height: 85vh; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 700; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #27272a; }
+        .modal-close { cursor: pointer; color: #a1a1aa; font-size: 20px; transition: 0.2s; }
+        .modal-close:hover { color: #fff; }
+        .user-list { overflow-y: auto; flex: 1; margin: 15px 0; display: flex; flex-direction: column; gap: 8px; padding-right: 5px; }
+        
+        .user-item { padding: 12px 15px; background: #27272a; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; transition: 0.2s; border: 1px solid transparent; }
+        .user-item:hover { background: #3f3f46; }
+        .user-item.selected { border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+        .user-item.selected .check-icon { color: #22c55e; display: block; }
+        .check-icon { display: none; font-size: 14px; }
+        .user-item-info { display: flex; flex-direction: column; gap: 3px; }
+        .user-item-name { font-weight: 600; color: #fff; }
+        .user-item-email { font-size: 11px; color: #a1a1aa; }
+    </style>
+</head>
+<body>
+
+<div class="admin-card">
+    <h3><i class="fas fa-key"></i> Assign Access Code</h3>
+    
+    <div class="input-group">
+        <label>Target Audience</label>
+        <select id="codeTarget" class="styled-input" onchange="toggleCodeTarget()">
+            <option value="single">Single User (UID)</option>
+            <option value="multiple">Specific Multiple Users</option>
+            <option value="all">All Users (Everyone)</option>
+        </select>
+    </div>
+
+    <!-- For Single User -->
+    <div class="input-group" id="uidInputGroup">
+        <label>User UID</label>
+        <input type="text" id="targetUid" class="styled-input" placeholder="Paste user UID here">
+    </div>
+
+    <!-- For Multiple Users -->
+    <div class="input-group" id="multipleInputGroup" style="display: none;">
+        <button class="btn btn-secondary" onclick="openUserModal()"><i class="fas fa-users"></i> Select Users</button>
+        <div id="selectedTagsContainer" class="selected-tags-container">
+            <span style="color:#a1a1aa; font-size:12px; font-style:italic;" id="emptyTagMsg">No users selected.</span>
+        </div>
+    </div>
+
+    <div class="input-group">
+        <label>Video / Event Title</label>
+        <input type="text" id="videoTitle" class="styled-input" placeholder="e.g., SVT Japan Concert">
+    </div>
+
+    <div class="input-group">
+        <label>Access Code</label>
+        <input type="text" id="accessCode" class="styled-input" placeholder="e.g., SVT-JAPAN-2026">
+    </div>
+
+    <button class="btn" onclick="assignCode()">Send Code</button>
+    <div id="codeStatusMsg" style="margin-top:15px; font-size:14px; font-weight:600; text-align:center; display:none;"></div>
+</div>
+
+<!-- MULTIPLE USERS MODAL -->
+<div id="userSelectionModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>Select Users</span>
+            <i class="fas fa-times modal-close" onclick="closeUserModal()"></i>
+        </div>
+        <input type="text" id="userSearchBox" class="styled-input" placeholder="Search by name or email..." onkeyup="filterUserList()">
+        
+        <div class="user-list" id="modalUserList">
+            <div style="text-align: center; color: #a1a1aa; font-size: 13px; margin-top: 20px;">Loading users...</div>
+        </div>
+        
+        <button class="btn" onclick="closeUserModal()">Confirm Selection</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, update, get, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAs2S6iRhnYhmqNuF0QCCYu5NuzxHxIRv0",
+        authDomain: "tvnstream-b4497.firebaseapp.com",
+        databaseURL: "https://tvnstream-b4497-default-rtdb.firebaseio.com",
+        projectId: "tvnstream-b4497",
+        storageBucket: "tvnstream-b4497.appspot.com",
+        messagingSenderId: "308384754214",
+        appId: "1:308384754214:web:2938e76cd29b288f75d4e7"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let allUsersData = {};
+    let selectedUsersMap = new Map(); // Stores selected UIDs and their Names
+
+    // Toggle Inputs based on selection
+    window.toggleCodeTarget = function() {
+        const target = document.getElementById('codeTarget').value;
+        const uidGroup = document.getElementById('uidInputGroup');
+        const multipleGroup = document.getElementById('multipleInputGroup');
+        
+        uidGroup.style.display = 'none';
+        multipleGroup.style.display = 'none';
+
+        if (target === 'single') uidGroup.style.display = 'block';
+        else if (target === 'multiple') multipleGroup.style.display = 'block';
+    }
+
+    // Modal Operations
+    window.openUserModal = async function() {
+        document.getElementById('userSelectionModal').style.display = 'flex';
+        
+        if (Object.keys(allUsersData).length === 0) {
+            try {
+                const snap = await get(ref(db, 'users'));
+                if (snap.exists()) {
+                    allUsersData = snap.val();
+                    renderModalUsers();
+                } else {
+                    document.getElementById('modalUserList').innerHTML = '<div style="text-align: center; color: #a1a1aa; font-size: 13px; margin-top: 20px;">No users found in database.</div>';
+                }
+            } catch (err) {
+                console.error("Error fetching users:", err);
+            }
+        } else {
+            renderModalUsers();
+        }
+    }
+
+    window.closeUserModal = function() {
+        document.getElementById('userSelectionModal').style.display = 'none';
+        updateSelectedTagsUI();
+    }
+
+    window.filterUserList = function() {
+        renderModalUsers(document.getElementById('userSearchBox').value.toLowerCase());
+    }
+
+    // Render Users inside Modal
+    function renderModalUsers(searchQuery = '') {
+        const listContainer = document.getElementById('modalUserList');
+        listContainer.innerHTML = '';
+
+        for (const [uid, data] of Object.entries(allUsersData)) {
+            const name = data.name || data.telegramUsername || "Unknown Member";
+            const email = data.email || "No email";
+            
+            if (name.toLowerCase().includes(searchQuery) || email.toLowerCase().includes(searchQuery)) {
+                const isSelected = selectedUsersMap.has(uid);
+                
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `user-item ${isSelected ? 'selected' : ''}`;
+                itemDiv.innerHTML = `
+                    <div class="user-item-info">
+                        <span class="user-item-name">${name}</span>
+                        <span class="user-item-email">${email}</span>
+                    </div>
+                    <i class="fas fa-check-circle check-icon"></i>
+                `;
+                
+                // Toggle Selection
+                itemDiv.onclick = () => {
+                    if (selectedUsersMap.has(uid)) {
+                        selectedUsersMap.delete(uid);
+                    } else {
+                        selectedUsersMap.set(uid, name);
+                    }
+                    renderModalUsers(searchQuery); // Re-render to update UI
+                };
+                
+                listContainer.appendChild(itemDiv);
+            }
+        }
+    }
+
+    // Update Main Form UI with Selected Tags
+    function updateSelectedTagsUI() {
+        const container = document.getElementById('selectedTagsContainer');
+        const emptyMsg = document.getElementById('emptyTagMsg');
+        
+        container.style.display = 'flex';
+        
+        if (selectedUsersMap.size === 0) {
+            container.innerHTML = '<span style="color:#a1a1aa; font-size:12px; font-style:italic;" id="emptyTagMsg">No users selected.</span>';
+            return;
+        }
+
+        container.innerHTML = '';
+        selectedUsersMap.forEach((name, uid) => {
+            const tag = document.createElement('div');
+            tag.className = 'user-tag';
+            tag.innerHTML = `<span>${name}</span> <i class="fas fa-times" onclick="removeUserTag('${uid}')"></i>`;
+            container.appendChild(tag);
+        });
+    }
+
+    window.removeUserTag = function(uid) {
+        selectedUsersMap.delete(uid);
+        updateSelectedTagsUI();
+        renderModalUsers(); // Update modal states too
+    }
+
+    // Process Assignment
+    window.assignCode = async function() {
+        const targetType = document.getElementById('codeTarget').value;
+        const targetUid = document.getElementById('targetUid').value.trim();
+        const videoTitle = document.getElementById('videoTitle').value.trim();
+        const accessCode = document.getElementById('accessCode').value.trim();
+        const statusMsg = document.getElementById('codeStatusMsg');
+
+        if (!videoTitle || !accessCode) {
+            statusMsg.style.display = 'block'; statusMsg.style.color = '#ef4444';
+            statusMsg.innerText = "Please provide both Video Title and Code."; return;
+        }
+
+        if (targetType === 'single' && !targetUid) {
+            statusMsg.style.display = 'block'; statusMsg.style.color = '#ef4444';
+            statusMsg.innerText = "Please enter a User UID."; return;
+        }
+        
+        if (targetType === 'multiple' && selectedUsersMap.size === 0) {
+            statusMsg.style.display = 'block'; statusMsg.style.color = '#ef4444';
+            statusMsg.innerText = "Please select at least one user."; return;
+        }
+
+        statusMsg.style.display = 'block'; statusMsg.style.color = '#fff';
+        statusMsg.innerText = "Assigning code securely to user profiles...";
+
+        const codeData = { videoTitle: videoTitle, code: accessCode, timestamp: Date.now() };
+
+        try {
+            let updates = {};
+
+            if (targetType === 'single') {
+                const newCodeKey = push(ref(db, `users/${targetUid}/codes`)).key;
+                updates[`users/${targetUid}/codes/${newCodeKey}`] = codeData;
+                
+                await update(ref(db), updates);
+                statusMsg.style.color = '#22c55e';
+                statusMsg.innerText = "Code successfully assigned to user profile!";
+            } 
+            else if (targetType === 'multiple') {
+                selectedUsersMap.forEach((name, uid) => {
+                    const newCodeKey = push(ref(db, `users/${uid}/codes`)).key;
+                    updates[`users/${uid}/codes/${newCodeKey}`] = codeData;
+                });
+                
+                await update(ref(db), updates);
+                statusMsg.style.color = '#22c55e';
+                statusMsg.innerText = `Code assigned to ${selectedUsersMap.size} user profiles!`;
+                
+                // Clear selection after success
+                selectedUsersMap.clear();
+                updateSelectedTagsUI();
+            } 
+            else if (targetType === 'all') {
+                const usersSnap = await get(ref(db, 'users'));
+                if (usersSnap.exists()) {
+                    const users = usersSnap.val();
+                    Object.keys(users).forEach(uid => {
+                        const newCodeKey = push(ref(db, `users/${uid}/codes`)).key;
+                        updates[`users/${uid}/codes/${newCodeKey}`] = codeData;
+                    });
+                    
+                    await update(ref(db), updates);
+                    statusMsg.style.color = '#22c55e';
+                    statusMsg.innerText = `Code assigned to all ${Object.keys(users).length} profiles!`;
+                } else {
+                    statusMsg.style.color = '#ef4444';
+                    statusMsg.innerText = "No users found in database.";
+                    return;
+                }
+            }
+
+            // Reset inputs
+            document.getElementById('videoTitle').value = '';
+            document.getElementById('accessCode').value = '';
+            if (targetType === 'single') document.getElementById('targetUid').value = '';
+
+        } catch (error) {
+            statusMsg.style.color = '#ef4444';
+            statusMsg.innerText = "Error: " + error.message;
+        }
+    }
+</script>
+</body>
+</html>
